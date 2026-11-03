@@ -1,0 +1,2597 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#08090c" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Munjiz — PWA Task & Time Planner</title>
+  <link id="pwaManifestLink" rel="manifest" href="data:application/manifest+json,{}" />
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'Cairo', 'sans-serif'],
+            mono: ['Inter', 'monospace']
+          },
+          colors: {
+            dark: {
+              bg: '#08090c',
+              surface: '#101218',
+              card: '#151821',
+              border: '#222634',
+              hover: '#1c202c'
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    body {
+      font-family: 'Inter', 'Cairo', sans-serif;
+      background-color: #08090c;
+      color: #f1f5f9;
+      line-height: 1.75;
+      word-spacing: 0.04em;
+      letter-spacing: 0.01em;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    html[dir="rtl"] body {
+      font-family: 'Cairo', 'Inter', sans-serif;
+      line-height: 1.85;
+      word-spacing: 0.06em;
+      letter-spacing: 0;
+    }
+    .font-timer {
+      font-family: 'Inter', monospace;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.03em;
+    }
+    .readable-text {
+      line-height: 1.8;
+      word-spacing: 0.05em;
+    }
+    /* Minimal Dark Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #08090c;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #262b3d;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3b425c;
+    }
+    @keyframes pulse-amber {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.35); }
+      50% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+    }
+    .upcoming-alert-pulse {
+      animation: pulse-amber 2.2s infinite;
+    }
+    .widget-shadow {
+      box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.08);
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-[#08090c] text-slate-100 selection:bg-indigo-500 selection:text-white pb-72">
+
+  <!-- Minimal Clean Header -->
+  <header class="sticky top-0 z-30 bg-[#08090c]/90 backdrop-blur-xl border-b border-[#1e2230] px-6 py-4">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+      <!-- Brand + PWA & Sync Status -->
+      <div class="flex items-center gap-3.5">
+        <div class="w-9 h-9 rounded-xl bg-indigo-600/90 flex items-center justify-center shadow-md shadow-indigo-600/20">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+          </svg>
+        </div>
+        <div class="flex items-center gap-2.5">
+          <h1 id="appBrandTitle" class="text-lg font-bold text-white tracking-wide">Munjiz</h1>
+          <span id="pwaStatusBadge" class="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/25 font-medium flex items-center gap-1.5">
+            <span id="networkStatusDot" class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            <span id="lblNetworkState">PWA Ready</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- View Switcher Tabs -->
+      <nav class="flex items-center bg-[#101218] p-1 rounded-xl border border-[#222634]">
+        <button id="tabBtnSplit" type="button" class="px-4 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all bg-indigo-600 text-white">
+          Split View
+        </button>
+        <button id="tabBtnTasks" type="button" class="px-4 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-slate-400 hover:text-white">
+          Tasks
+        </button>
+        <button id="tabBtnPlanner" type="button" class="px-4 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-slate-400 hover:text-white">
+          Time Blocks
+        </button>
+      </nav>
+
+      <!-- Utility Controls + Google Drive Sync + PWA Install + Language Toggle -->
+      <div class="flex items-center flex-wrap gap-2">
+        <!-- Bilingual Switcher (EN / AR) -->
+        <div class="flex items-center bg-[#101218] p-1 rounded-xl border border-[#222634]">
+          <button id="btnLangEn" type="button" class="px-2.5 py-1 rounded-lg text-xs font-semibold transition bg-indigo-600 text-white">
+            EN
+          </button>
+          <button id="btnLangAr" type="button" class="px-2.5 py-1 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-white">
+            عربي
+          </button>
+        </div>
+
+        <!-- Google Drive & Local Disk Sync Button -->
+        <button id="btnOpenSyncModal" type="button" class="px-3.5 py-1.5 rounded-xl bg-[#101218] hover:bg-[#181b24] text-sky-300 border border-[#222634] text-xs font-medium transition flex items-center gap-2">
+          <span id="driveSyncDot" class="w-2 h-2 rounded-full bg-sky-400"></span>
+          <span id="lblDriveSyncBtn">Drive Sync</span>
+        </button>
+
+        <!-- Install PWA Button -->
+        <button id="btnInstallPwa" type="button" class="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/25 text-xs font-medium transition flex items-center gap-1.5">
+          <span>📲</span>
+          <span id="lblInstallPwa">Install App</span>
+        </button>
+
+        <div class="hidden xl:flex items-center gap-2 bg-[#101218] border border-[#222634] px-3.5 py-1.5 rounded-xl">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span id="liveClockDisplay" class="font-timer text-xs font-semibold text-slate-300">--:--:--</span>
+        </div>
+
+        <button id="btnSimulateUpcoming" type="button" class="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/25 text-xs font-medium transition flex items-center gap-1.5">
+          <span>🔔</span>
+          <span id="lblTestAlert">15m Alert</span>
+        </button>
+
+        <button id="btnSoundToggle" type="button" class="p-2 rounded-xl bg-[#101218] hover:bg-[#181b24] text-slate-300 border border-[#222634] transition">
+          <span id="soundIcon">🔊</span>
+        </button>
+
+        <button id="btnOpenNewTask" type="button" class="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-semibold transition flex items-center gap-1.5">
+          <span>+</span>
+          <span id="lblNewTaskBtn">New Task</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Spacious Main Workspace -->
+  <main class="max-w-7xl mx-auto px-6 py-8 space-y-8">
+
+    <!-- Clean 4-Card Metrics & Controls Bar -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <!-- Card 1: Completed -->
+      <div class="bg-[#101218] border border-[#1e2230] rounded-2xl p-5 flex items-center justify-between">
+        <div class="space-y-1">
+          <p id="lblStatProgress" class="text-xs font-medium text-slate-400">Completed</p>
+          <p id="statTasksCount" class="text-xl font-bold text-white">0 / 0</p>
+          <p id="statSubtasksCount" class="text-xs text-slate-400">0 subtasks</p>
+        </div>
+        <div id="statPercentBadge" class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center text-indigo-400 font-bold text-sm">
+          0%
+        </div>
+      </div>
+
+      <!-- Card 2: Focus Time -->
+      <div class="bg-[#101218] border border-[#1e2230] rounded-2xl p-5 flex items-center justify-between">
+        <div class="space-y-1">
+          <p id="lblStatTracked" class="text-xs font-medium text-slate-400">Tracked Time</p>
+          <p id="statTotalTracked" class="text-xl font-bold font-timer text-emerald-400">00:00:00</p>
+          <p id="lblStatTrackedSub" class="text-xs text-slate-500">Total active focus</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 text-lg">
+          ⏱️
+        </div>
+      </div>
+
+      <!-- Card 3: Upcoming Alert Lead Time -->
+      <div class="bg-[#101218] border border-[#1e2230] rounded-2xl p-5 flex items-center justify-between">
+        <div class="space-y-1.5">
+          <p id="lblReminderSetting" class="text-xs font-medium text-slate-400">Upcoming Alert</p>
+          <select id="reminderLeadSelect" class="bg-[#161922] border border-[#262b3d] text-amber-300 text-xs font-semibold rounded-lg px-3 py-1.5 focus:outline-none focus:border-amber-400">
+            <option value="5" id="optLead5">5 min before</option>
+            <option value="10" id="optLead10">10 min before</option>
+            <option value="15" id="optLead15" selected>15 min before</option>
+            <option value="20" id="optLead20">20 min before</option>
+            <option value="30" id="optLead30">30 min before</option>
+          </select>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400 text-lg">
+          🔔
+        </div>
+      </div>
+
+      <!-- Card 4: Pinned Widget & Backup Status -->
+      <div class="bg-[#101218] border border-[#1e2230] rounded-2xl p-5 flex flex-col justify-between gap-2">
+        <div class="flex items-center justify-between">
+          <p id="lblWidgetControls" class="text-xs font-medium text-slate-400">Pinned Timer</p>
+          <span id="lastBackupMiniLabel" class="text-[11px] text-sky-400 font-medium">IndexedDB Active</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btnToggleWidgetVisibility" type="button" class="flex-1 px-3 py-1.5 rounded-lg bg-[#161922] hover:bg-[#1e2230] text-slate-200 border border-[#262b3d] text-xs font-medium transition">
+            Reset Position
+          </button>
+          <button id="btnPopoutPip" type="button" class="flex-1 px-3 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/30 text-xs font-medium transition">
+            Pop-out ⧉
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Content Grid -->
+    <div id="workspaceGrid" class="grid grid-cols-1 lg:grid-cols-12 gap-7 items-start">
+
+      <!-- Tasks Panel (7 Cols) -->
+      <section id="tasksSection" class="lg:col-span-7 bg-[#101218] border border-[#1e2230] rounded-2xl p-6 space-y-6">
+        <!-- Section Header + Category Pills -->
+        <div class="flex flex-wrap items-center justify-between gap-4 border-b border-[#1e2230] pb-4">
+          <h2 id="lblTasksHeading" class="text-base font-bold text-white tracking-wide">Tasks</h2>
+
+          <div class="flex flex-wrap items-center gap-2" id="categoryFilterBar">
+            <button type="button" data-cat="all" class="cat-pill px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-600 text-white">All</button>
+            <button type="button" data-cat="Work" class="cat-pill px-3 py-1.5 rounded-lg text-xs font-medium bg-[#161922] text-slate-300 hover:bg-[#1e2230]">Work</button>
+            <button type="button" data-cat="Study" class="cat-pill px-3 py-1.5 rounded-lg text-xs font-medium bg-[#161922] text-slate-300 hover:bg-[#1e2230]">Study</button>
+            <button type="button" data-cat="Personal" class="cat-pill px-3 py-1.5 rounded-lg text-xs font-medium bg-[#161922] text-slate-300 hover:bg-[#1e2230]">Personal</button>
+          </div>
+        </div>
+
+        <!-- Streamlined Quick Add Bar -->
+        <form id="quickTaskForm" class="bg-[#0b0d12] border border-[#1e2230] rounded-2xl p-4 space-y-3.5">
+          <div class="flex flex-wrap sm:flex-nowrap items-center gap-3">
+            <input id="quickTitleInput" type="text" required placeholder="Add a new task..." class="w-full bg-[#13161f] border border-[#252a3a] rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500" />
+            <button id="btnQuickAddSubmit" type="submit" class="shrink-0 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition">
+              + Add
+            </button>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div class="flex items-center justify-between gap-2 bg-[#13161f] px-3 py-2 rounded-xl border border-[#222634]">
+              <span id="lblQuickStart" class="text-slate-400">Start</span>
+              <input id="quickStartInput" type="time" class="bg-transparent text-slate-200 font-timer focus:outline-none" />
+            </div>
+            <div class="flex items-center justify-between gap-2 bg-[#13161f] px-3 py-2 rounded-xl border border-[#222634]">
+              <span id="lblQuickEnd" class="text-slate-400">End</span>
+              <input id="quickEndInput" type="time" class="bg-transparent text-slate-200 font-timer focus:outline-none" />
+            </div>
+            <div class="flex items-center justify-between gap-2 bg-[#13161f] px-3 py-2 rounded-xl border border-[#222634]">
+              <span id="lblQuickList" class="text-slate-400">List</span>
+              <select id="quickCategorySelect" class="bg-transparent text-slate-200 focus:outline-none">
+                <option value="Work" class="bg-[#101218]">Work</option>
+                <option value="Study" class="bg-[#101218]">Study</option>
+                <option value="Personal" class="bg-[#101218]">Personal</option>
+              </select>
+            </div>
+            <div class="flex items-center justify-between gap-2 bg-[#13161f] px-3 py-2 rounded-xl border border-[#222634]">
+              <span id="lblQuickMins" class="text-slate-400">Min</span>
+              <input id="quickDurationInput" type="number" min="5" max="480" value="45" class="bg-transparent text-slate-200 font-timer focus:outline-none w-14 text-center" />
+            </div>
+          </div>
+        </form>
+
+        <!-- Filter & Search Row -->
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2 text-xs">
+            <button type="button" data-status="all" id="filterStatusAll" class="status-pill px-3 py-1.5 rounded-lg bg-[#161922] text-indigo-300 border border-indigo-500/30 font-medium">All</button>
+            <button type="button" data-status="pending" id="filterStatusPending" class="status-pill px-3 py-1.5 rounded-lg bg-[#161922]/60 text-slate-400 hover:text-slate-200">Active</button>
+            <button type="button" data-status="completed" id="filterStatusCompleted" class="status-pill px-3 py-1.5 rounded-lg bg-[#161922]/60 text-slate-400 hover:text-slate-200">Done</button>
+          </div>
+          <input id="searchTaskInput" type="text" placeholder="Search tasks..." class="bg-[#0b0d12] border border-[#222634] rounded-xl px-3.5 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-52" />
+        </div>
+
+        <!-- Spacious Tasks List -->
+        <div id="tasksListContainer" class="space-y-4"></div>
+      </section>
+
+      <!-- Time Blocking Planner Panel (5 Cols) -->
+      <section id="plannerSection" class="lg:col-span-5 bg-[#101218] border border-[#1e2230] rounded-2xl p-6 space-y-6">
+        <div class="flex items-center justify-between border-b border-[#1e2230] pb-4">
+          <h2 id="lblPlannerHeading" class="text-base font-bold text-white tracking-wide">Time Blocking</h2>
+          <span id="todayDateLabel" class="text-xs px-3 py-1 rounded-lg bg-[#161922] text-slate-300 font-medium"></span>
+        </div>
+
+        <!-- Next Task Card -->
+        <div id="plannerUpcomingBox" class="rounded-2xl p-4 bg-[#0b0d12] border border-[#1e2230] flex items-center justify-between gap-4">
+          <div class="space-y-1 min-w-0">
+            <span id="lblUpNext" class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Up Next</span>
+            <p id="plannerNextTaskTitle" class="text-sm font-bold text-amber-300 truncate">No upcoming task</p>
+            <p id="plannerNextTaskTime" class="text-xs text-slate-400 font-timer">--:--</p>
+          </div>
+          <button id="btnStartNextTaskNow" type="button" class="px-3.5 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-semibold transition shrink-0">
+            Start ▶
+          </button>
+        </div>
+
+        <!-- Schedule Timeline -->
+        <div id="timeBlockingContainer" class="space-y-3.5 max-h-[620px] overflow-y-auto pr-1"></div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- PINNED FLOATING WIDGET (Clean, Airy, Draggable + PiP)                 -->
+  <!-- ===================================================================== -->
+  <aside id="pinnedTimerWidget" style="bottom: 24px; right: 24px;" class="fixed z-40 w-[340px] sm:w-[370px] max-w-[calc(100vw-24px)] rounded-2xl bg-[#11141c]/95 backdrop-blur-2xl border border-[#282d3e] widget-shadow transition-shadow select-none">
+
+    <!-- Drag Header -->
+    <div id="widgetDragHeader" class="cursor-move bg-[#151822] px-4 py-3 rounded-t-2xl border-b border-[#222634] flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <span class="w-2 h-2 rounded-full bg-emerald-400" id="widgetStatusDot"></span>
+        <span id="lblWidgetHeader" class="text-xs font-semibold text-slate-200 tracking-wide">Focus Timer</span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <button id="btnWidgetPip" type="button" class="px-2.5 py-1 rounded-lg bg-[#1e2230] hover:bg-[#282d40] text-[11px] text-indigo-300 font-medium transition">
+          PiP ⧉
+        </button>
+        <button id="btnMinimizeWidget" type="button" class="w-6 h-6 rounded-lg bg-[#1e2230] hover:bg-[#282d40] text-slate-300 flex items-center justify-center text-xs font-bold">
+          _
+        </button>
+      </div>
+    </div>
+
+    <!-- 15-Minute Upcoming Task Alert Banner -->
+    <div id="widgetUpcomingBanner" class="hidden bg-amber-500/15 border-b border-amber-500/40 px-4 py-3 upcoming-alert-pulse">
+      <div class="flex items-start justify-between gap-3">
+        <div class="space-y-1">
+          <div class="flex items-center gap-1.5">
+            <span class="text-xs">🔔</span>
+            <span class="text-xs font-bold text-amber-300" id="upcomingBannerHeadline">Next task in 15 min</span>
+          </div>
+          <p id="upcomingBannerTaskName" class="text-xs font-semibold text-white leading-relaxed"></p>
+        </div>
+        <div class="flex flex-col gap-1.5 shrink-0">
+          <button id="btnSwitchToUpcoming" type="button" class="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] transition">
+            Switch
+          </button>
+          <button id="btnDismissUpcoming" type="button" class="px-2.5 py-1 rounded-lg bg-[#161922] hover:bg-[#1e2230] text-slate-300 text-[10px] transition">
+            Dismiss
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Widget Body -->
+    <div id="widgetBodyContent" class="p-4 space-y-4">
+      <!-- Mode Toggle: Countdown / Stopwatch -->
+      <div class="grid grid-cols-2 bg-[#0b0d12] p-1 rounded-xl border border-[#1e2230] text-xs font-semibold">
+        <button id="modeBtnCountdown" type="button" class="py-2 rounded-lg bg-indigo-600 text-white transition flex items-center justify-center gap-1.5">
+          <span>⏳</span>
+          <span id="lblModeCountdown">Countdown</span>
+        </button>
+        <button id="modeBtnStopwatch" type="button" class="py-2 rounded-lg text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5">
+          <span>⏱️</span>
+          <span id="lblModeStopwatch">Stopwatch</span>
+        </button>
+      </div>
+
+      <!-- Active Task Selector -->
+      <div class="flex items-center justify-between gap-2 bg-[#0b0d12] border border-[#1e2230] px-3.5 py-2.5 rounded-xl">
+        <select id="widgetTaskSelect" class="w-full bg-transparent text-xs font-semibold text-white focus:outline-none truncate"></select>
+        <span id="widgetTaskTimeSlot" class="text-[11px] font-timer px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 shrink-0">--:--</span>
+      </div>
+
+      <!-- Timer Display -->
+      <div class="bg-[#0b0d12] border border-[#1e2230] rounded-2xl p-4 text-center space-y-3">
+        <div class="flex items-center justify-between text-[11px] text-slate-400">
+          <span id="timerModeCaption">Remaining</span>
+          <div id="countdownPresetBtns" class="flex items-center gap-1.5">
+            <button type="button" data-mins="15" class="preset-min-btn px-2 py-0.5 rounded-md bg-[#161922] hover:bg-[#222634] text-slate-300 text-[10px] font-timer">15m</button>
+            <button type="button" data-mins="25" class="preset-min-btn px-2 py-0.5 rounded-md bg-[#161922] hover:bg-[#222634] text-slate-300 text-[10px] font-timer">25m</button>
+            <button type="button" data-mins="45" class="preset-min-btn px-2 py-0.5 rounded-md bg-[#161922] hover:bg-[#222634] text-slate-300 text-[10px] font-timer">45m</button>
+            <button type="button" data-mins="60" class="preset-min-btn px-2 py-0.5 rounded-md bg-[#161922] hover:bg-[#222634] text-slate-300 text-[10px] font-timer">60m</button>
+          </div>
+        </div>
+
+        <div id="widgetDigitalDisplay" class="font-timer text-4xl font-bold tracking-wider text-white py-1">
+          25:00
+        </div>
+
+        <div class="w-full h-1.5 bg-[#181b24] rounded-full overflow-hidden">
+          <div id="widgetProgressBar" class="h-full bg-indigo-500 transition-all duration-300" style="width: 100%;"></div>
+        </div>
+
+        <div class="flex items-center justify-center gap-2 pt-1">
+          <button id="btnTimerStartPause" type="button" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition">
+            ▶ Start
+          </button>
+          <button id="btnTimerReset" type="button" class="px-3.5 py-2.5 rounded-xl bg-[#161922] hover:bg-[#222634] text-slate-300 font-medium text-xs border border-[#262b3d] transition">
+            ↺
+          </button>
+          <button id="btnWidgetCompleteTask" type="button" class="px-3.5 py-2.5 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 font-semibold text-xs border border-indigo-500/30 transition">
+            ✓ Done
+          </button>
+        </div>
+      </div>
+
+      <!-- Subtasks inside Widget -->
+      <div class="bg-[#0b0d12] border border-[#1e2230] rounded-xl p-3 space-y-2">
+        <div class="flex items-center justify-between">
+          <span id="lblWidgetSubtasks" class="text-[11px] font-semibold text-slate-400">Subtasks</span>
+          <span id="widgetSubtaskProgressText" class="text-[11px] text-indigo-300 font-timer">0/0</span>
+        </div>
+        <div id="widgetSubtasksList" class="space-y-1.5 max-h-28 overflow-y-auto pr-1 text-xs"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 1: Add / Edit Task                                              -->
+  <!-- ===================================================================== -->
+  <div id="taskModalOverlay" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-[#101218] border border-[#242938] rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-[#1e2230] pb-4">
+        <h3 id="modalTitleHeading" class="text-base font-bold text-white">Task Details</h3>
+        <button id="btnCloseModal" type="button" class="w-8 h-8 rounded-lg bg-[#161922] hover:bg-[#222634] text-slate-300 flex items-center justify-center font-bold">✕</button>
+      </div>
+
+      <form id="fullTaskForm" class="space-y-4 text-xs sm:text-sm">
+        <input type="hidden" id="modalTaskId" />
+
+        <div>
+          <label id="lblModalTitle" class="block text-slate-300 font-medium mb-1.5">Title</label>
+          <input id="modalTaskTitle" type="text" required placeholder="Task title..." class="w-full bg-[#0b0d12] border border-[#242938] rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500" />
+        </div>
+
+        <div>
+          <label id="lblModalNotes" class="block text-slate-300 font-medium mb-1.5">Notes</label>
+          <textarea id="modalTaskNotes" rows="2" placeholder="Optional details..." class="w-full bg-[#0b0d12] border border-[#242938] rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 readable-text"></textarea>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label id="lblModalStart" class="block text-slate-300 font-medium mb-1.5">Start</label>
+            <input id="modalStartTime" type="time" required class="w-full bg-[#0b0d12] border border-[#242938] rounded-xl px-3 py-2 text-white font-timer focus:outline-none focus:border-indigo-500" />
+          </div>
+          <div>
+            <label id="lblModalEnd" class="block text-slate-300 font-medium mb-1.5">End</label>
+            <input id="modalEndTime" type="time" required class="w-full bg-[#0b0d12] border border-[#242938] rounded-xl px-3 py-2 text-white font-timer focus:outline-none focus:border-indigo-500" />
+          </div>
+          <div>
+            <label id="lblModalDuration" class="block text-slate-300 font-medium mb-1.5">Duration (min)</label>
+            <input id="modalDurationMins" type="number" min="5" max="480" value="45" required class="w-full bg-[#0b0d12] border border-[#242938] rounded-xl px-3 py-2 text-white font-timer focus:outline-none focus:border-indigo-500" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label id="lblModalCat" class="block text-slate-300 font-medium mb-1.5">List</label>
+            <select id="modalCategory" class="w-full bg-[#0b0d12] border border-[#242938] rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-indigo-500">
+              <option value="Work">Work</option>
+              <option value="Study">Study</option>
+              <option value="Personal">Personal</option>
+            </select>
+          </div>
+          <div>
+            <label id="lblModalColor" class="block text-slate-300 font-medium mb-1.5">Tag Color</label>
+            <select id="modalColor" class="w-full bg-[#0b0d12] border border-[#242938] rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-indigo-500">
+              <option value="indigo">Indigo</option>
+              <option value="rose">Rose (High Priority)</option>
+              <option value="emerald">Emerald</option>
+              <option value="amber">Amber</option>
+              <option value="sky">Sky</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="bg-[#0b0d12] border border-[#1e2230] rounded-xl p-4 space-y-3">
+          <label id="lblModalSubtasks" class="block text-slate-300 font-medium text-xs">Subtasks</label>
+          <div class="flex items-center gap-2">
+            <input id="modalNewSubtaskInput" type="text" placeholder="Add step..." class="w-full bg-[#13161f] border border-[#242938] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500" />
+            <button id="btnAddSubtaskModal" type="button" class="shrink-0 px-3.5 py-2 rounded-lg bg-[#181c26] hover:bg-[#222634] text-indigo-300 border border-[#262b3d] text-xs font-semibold">
+              + Add
+            </button>
+          </div>
+          <div id="modalSubtasksContainer" class="space-y-2 max-h-36 overflow-y-auto"></div>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-[#1e2230]">
+          <button id="btnCancelModal" type="button" class="px-4 py-2 rounded-xl bg-[#161922] hover:bg-[#222634] text-slate-300 font-medium text-xs">
+            Cancel
+          </button>
+          <button id="btnSaveModal" type="submit" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs">
+            Save Task
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 2: Google Drive API Sync, Local Disk Link & PWA Offline Center  -->
+  <!-- ===================================================================== -->
+  <div id="syncModalOverlay" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-[#101218] border border-[#242938] rounded-2xl max-w-xl w-full p-6 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-[#1e2230] pb-4">
+        <div class="flex items-center gap-2.5">
+          <span class="text-lg">☁️</span>
+          <h3 id="lblSyncModalTitle" class="text-base font-bold text-white">Google Drive Sync & Offline Storage</h3>
+        </div>
+        <button id="btnCloseSyncModal" type="button" class="w-8 h-8 rounded-lg bg-[#161922] hover:bg-[#222634] text-slate-300 flex items-center justify-center font-bold">✕</button>
+      </div>
+
+      <!-- 3-Tier Data Protection Status -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+        <div class="bg-[#0b0d12] border border-[#1e2230] rounded-xl p-3.5 space-y-1">
+          <span class="text-slate-400 block" id="lblTierIdb">1. IndexedDB Engine</span>
+          <span id="idbStatusText" class="font-semibold text-emerald-400 block">Persistent Active</span>
+        </div>
+        <div class="bg-[#0b0d12] border border-[#1e2230] rounded-xl p-3.5 space-y-1">
+          <span class="text-slate-400 block" id="lblTierDrive">2. Google Drive API</span>
+          <span id="driveModalStatusText" class="font-semibold text-sky-400 block">Ready to Connect</span>
+        </div>
+        <div class="bg-[#0b0d12] border border-[#1e2230] rounded-xl p-3.5 space-y-1">
+          <span class="text-slate-400 block" id="lblTierDisk">3. PC Disk File</span>
+          <span id="diskModalStatusText" class="font-semibold text-indigo-300 block">Standby</span>
+        </div>
+      </div>
+
+      <!-- Google Drive REST API v3 Section -->
+      <div class="bg-[#0b0d12] border border-[#1e2230] rounded-2xl p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <h4 id="lblDriveSectionTitle" class="text-sm font-bold text-white">Google Drive Automatic Backup & Sync</h4>
+          <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+            <input id="chkAutoDriveSync" type="checkbox" checked class="w-4 h-4 rounded accent-indigo-500" />
+            <span id="lblAutoSyncToggle">Auto-Sync</span>
+          </label>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <div>
+            <label id="lblClientId" class="block text-slate-400 mb-1">Google OAuth Client ID (Optional)</label>
+            <input id="inputGoogleClientId" type="text" placeholder="xxxx.apps.googleusercontent.com" class="w-full bg-[#13161f] border border-[#242938] rounded-xl px-3.5 py-2 text-white font-mono text-xs focus:outline-none focus:border-indigo-500" />
+          </div>
+          <div>
+            <label id="lblAccessToken" class="block text-slate-400 mb-1">Or Direct OAuth Access Token</label>
+            <input id="inputGoogleAccessToken" type="password" placeholder="ya29.a0AfH6SM..." class="w-full bg-[#13161f] border border-[#242938] rounded-xl px-3.5 py-2 text-white font-mono text-xs focus:outline-none focus:border-indigo-500" />
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2.5 pt-1">
+          <button id="btnConnectGoogleDrive" type="button" class="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition">
+            🔗 Connect Google Drive
+          </button>
+          <button id="btnSyncDriveNow" type="button" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition">
+            ☁️ Backup Now
+          </button>
+          <button id="btnRestoreFromDrive" type="button" class="px-4 py-2 rounded-xl bg-[#161922] hover:bg-[#222634] text-slate-200 border border-[#262b3d] text-xs font-medium transition">
+            📥 Restore from Drive
+          </button>
+        </div>
+
+        <p id="driveSyncLogMsg" class="text-xs text-slate-400 font-mono bg-[#101218] px-3.5 py-2 rounded-xl border border-[#1a1e2b]">
+          Status: All changes saved to IndexedDB. Ready for Google Drive sync.
+        </p>
+      </div>
+
+      <!-- Direct Local Disk File Auto-Save (Zero Browser Cache Dependency) -->
+      <div class="bg-[#0b0d12] border border-[#1e2230] rounded-2xl p-5 space-y-3.5">
+        <h4 id="lblDiskSectionTitle" class="text-sm font-bold text-white">Direct PC Disk Auto-Save & JSON Backup</h4>
+        <div class="flex flex-wrap items-center gap-2.5">
+          <button id="btnLinkLocalDiskFile" type="button" class="px-4 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition">
+            💾 Link Local Disk File (Auto-Write)
+          </button>
+          <button id="btnExportJsonBackup" type="button" class="px-3.5 py-2 rounded-xl bg-[#161922] hover:bg-[#222634] text-slate-200 border border-[#262b3d] text-xs font-medium transition">
+            ⬇ Export .JSON
+          </button>
+          <label class="px-3.5 py-2 rounded-xl bg-[#161922] hover:bg-[#222634] text-slate-200 border border-[#262b3d] text-xs font-medium transition cursor-pointer">
+            <span id="lblImportJson">⬆ Import .JSON</span>
+            <input id="inputImportJsonFile" type="file" accept=".json,application/json" class="hidden" />
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden Canvas & Video for Always-on-Top OS Picture-in-Picture -->
+  <canvas id="pipCanvas" width="420" height="220" class="hidden"></canvas>
+  <video id="pipVideo" muted playsinline class="hidden"></video>
+
+  <script>
+    // =========================================================================
+    // 1. PWA MANIFEST & OFFLINE SERVICE WORKER REGISTRATION
+    // =========================================================================
+    let deferredPwaPrompt = null;
+
+    function setupPwaArchitecture() {
+      // Create inline SVG icon data URI for PWA Manifest
+      const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="42" fill="#4f46e5"/><path d="M56 98l26 26 54-56" stroke="#ffffff" stroke-width="16" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      const iconDataUrl = 'data:image/svg+xml;base64,' + btoa(svgIcon);
+
+      const manifestObj = {
+        name: 'Munjiz — Task & Time Planner',
+        short_name: 'Munjiz',
+        description: 'Offline-first Task Planner, Time Blocking & Pinned Focus Timer with Google Drive Sync',
+        start_url: './index.html',
+        display: 'standalone',
+        background_color: '#08090c',
+        theme_color: '#08090c',
+        icons: [
+          { src: iconDataUrl, sizes: '192x192', type: 'image/svg+xml', purpose: 'any maskable' },
+          { src: iconDataUrl, sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' }
+        ]
+      };
+
+      try {
+        const manifestLink = document.getElementById('pwaManifestLink');
+        const blob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' });
+        manifestLink.href = URL.createObjectURL(blob);
+      } catch (e) {
+        // Ignore blob restrictions in sandboxed environments
+      }
+
+      // Register Service Worker if supported and origin permits
+      if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+        const swCode = `
+          const CACHE_NAME = 'munjiz-pwa-v1';
+          self.addEventListener('install', (e) => {
+            self.skipWaiting();
+          });
+          self.addEventListener('activate', (e) => {
+            e.waitUntil(self.clients.claim());
+          });
+          self.addEventListener('fetch', (e) => {
+            if (e.request.method !== 'GET') return;
+            e.respondWith(
+              caches.match(e.request).then((cached) => {
+                return cached || fetch(e.request).then((resp) => {
+                  const clone = resp.clone();
+                  caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
+                  return resp;
+                }).catch(() => cached);
+              })
+            );
+          });
+        `;
+        try {
+          const swBlob = new Blob([swCode], { type: 'application/javascript' });
+          const swUrl = URL.createObjectURL(swBlob);
+          navigator.serviceWorker.register(swUrl).catch(() => {
+            // Fallback to ./sw.js if hosted from multi-file PWA package
+            navigator.serviceWorker.register('./sw.js').catch(() => {});
+          });
+        } catch (e) {
+          // Ignore service worker registration errors inside sandboxed iframes
+        }
+      }
+
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPwaPrompt = e;
+      });
+    }
+
+    // =========================================================================
+    // 2. INDEXEDDB PERSISTENT ENGINE + FILE SYSTEM ACCESS + GOOGLE DRIVE API
+    // =========================================================================
+    const IDB_NAME = 'MunjizPersistentDB';
+    const IDB_VERSION = 1;
+    const IDB_STORE = 'app_state';
+    let idbInstance = null;
+    let localFileHandle = null;
+    let googleAccessToken = '';
+    let googleClientId = '';
+    let driveFileId = null;
+    let autoDriveSync = true;
+    let pendingOfflineSync = false;
+    let driveSyncTimer = null;
+
+    function openIndexedDB() {
+      return new Promise((resolve) => {
+        if (!('indexedDB' in window)) {
+          resolve(null);
+          return;
+        }
+        try {
+          const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+          req.onupgradeneeded = (ev) => {
+            const db = ev.target.result;
+            if (!db.objectStoreNames.contains(IDB_STORE)) {
+              db.createObjectStore(IDB_STORE, { keyPath: 'id' });
+            }
+          };
+          req.onsuccess = (ev) => {
+            idbInstance = ev.target.result;
+            if (navigator.storage && navigator.storage.persist) {
+              navigator.storage.persist().catch(() => {});
+            }
+            resolve(idbInstance);
+          };
+          req.onerror = () => resolve(null);
+        } catch (e) {
+          resolve(null);
+        }
+      });
+    }
+
+    function readFromIndexedDB() {
+      return new Promise((resolve) => {
+        if (!idbInstance) {
+          resolve(null);
+          return;
+        }
+        try {
+          const tx = idbInstance.transaction(IDB_STORE, 'readonly');
+          const store = tx.objectStore(IDB_STORE);
+          const req = store.get('primary_workspace');
+          req.onsuccess = () => resolve(req.result || null);
+          req.onerror = () => resolve(null);
+        } catch (e) {
+          resolve(null);
+        }
+      });
+    }
+
+    function writeToIndexedDB(payload) {
+      return new Promise((resolve) => {
+        if (!idbInstance) {
+          resolve(false);
+          return;
+        }
+        try {
+          const tx = idbInstance.transaction(IDB_STORE, 'readwrite');
+          const store = tx.objectStore(IDB_STORE);
+          store.put({ id: 'primary_workspace', ...payload });
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => resolve(false);
+        } catch (e) {
+          resolve(false);
+        }
+      });
+    }
+
+    async function writeToLocalDiskFile(payload) {
+      if (!localFileHandle) return;
+      try {
+        const writable = await localFileHandle.createWritable();
+        await writable.write(JSON.stringify(payload, null, 2));
+        await writable.close();
+        document.getElementById('diskModalStatusText').textContent = 'Synced to Disk ✓';
+      } catch (e) {
+        document.getElementById('diskModalStatusText').textContent = 'Permission Needed';
+      }
+    }
+
+    // Google Drive REST API v3 Backup & Restore
+    const DRIVE_BACKUP_FILENAME = 'munjiz_planner_backup.json';
+
+    function setSyncLog(msg, statusColor = 'sky') {
+      const logEl = document.getElementById('driveSyncLogMsg');
+      const dotEl = document.getElementById('driveSyncDot');
+      const miniEl = document.getElementById('lastBackupMiniLabel');
+      if (logEl) logEl.textContent = msg;
+      if (dotEl) {
+        dotEl.className = statusColor === 'emerald'
+          ? 'w-2 h-2 rounded-full bg-emerald-400'
+          : statusColor === 'amber'
+            ? 'w-2 h-2 rounded-full bg-amber-400 animate-pulse'
+            : 'w-2 h-2 rounded-full bg-sky-400';
+      }
+      if (miniEl) {
+        miniEl.textContent = statusColor === 'emerald' ? 'Drive Synced ✓' : 'IndexedDB Saved ✓';
+      }
+    }
+
+    async function findGoogleDriveBackupFile(token) {
+      const q = encodeURIComponent(`name = '${DRIVE_BACKUP_FILENAME}' and trashed = false`);
+      const resp = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&fields=files(id,name,modifiedTime)`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!resp.ok) throw new Error(`Drive API ${resp.status}`);
+      const data = await resp.json();
+      return (data.files && data.files[0]) ? data.files[0] : null;
+    }
+
+    async function syncToGoogleDriveNow(manual = false) {
+      const payload = buildSnapshotPayload();
+      const tokenInput = document.getElementById('inputGoogleAccessToken').value.trim();
+      if (tokenInput) googleAccessToken = tokenInput;
+
+      if (!navigator.onLine) {
+        pendingOfflineSync = true;
+        setSyncLog('Offline: Changes safely stored in IndexedDB & queued for Google Drive sync.', 'amber');
+        return;
+      }
+
+      // If user has provided an OAuth Access Token, perform real Google Drive v3 multipart upload
+      if (googleAccessToken) {
+        try {
+          setSyncLog('Syncing with Google Drive API v3...', 'amber');
+          if (!driveFileId) {
+            const existing = await findGoogleDriveBackupFile(googleAccessToken);
+            if (existing) driveFileId = existing.id;
+          }
+
+          const metadata = {
+            name: DRIVE_BACKUP_FILENAME,
+            mimeType: 'application/json'
+          };
+
+          const boundary = '-------314159265358979323846';
+          const delimiter = `\r\n--${boundary}\r\n`;
+          const closeDelim = `\r\n--${boundary}--`;
+          const multipartBody =
+            delimiter +
+            'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+            JSON.stringify(metadata) +
+            delimiter +
+            'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+            JSON.stringify(payload, null, 2) +
+            closeDelim;
+
+          const url = driveFileId
+            ? `https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=multipart`
+            : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+          const method = driveFileId ? 'PATCH' : 'POST';
+
+          const resp = await fetch(url, {
+            method,
+            headers: {
+              Authorization: `Bearer ${googleAccessToken}`,
+              'Content-Type': `multipart/related; boundary=${boundary}`
+            },
+            body: multipartBody
+          });
+
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const result = await resp.json();
+          if (result.id) driveFileId = result.id;
+          pendingOfflineSync = false;
+          const timeStr = new Date().toLocaleTimeString('en-GB');
+          document.getElementById('driveModalStatusText').textContent = `Synced (${timeStr})`;
+          setSyncLog(`Google Drive API Sync Complete (${DRIVE_BACKUP_FILENAME}) at ${timeStr}`, 'emerald');
+        } catch (err) {
+          setSyncLog(`Drive API Notice: ${err.message}. Data remains protected in IndexedDB.`, 'amber');
+        }
+        return;
+      }
+
+      // Simulated / Mirror Cloud Vault in IndexedDB when no external OAuth token is entered yet
+      await writeToIndexedDB({ ...payload, id: 'google_drive_cloud_mirror' });
+      pendingOfflineSync = false;
+      const timeStr = new Date().toLocaleTimeString('en-GB');
+      document.getElementById('driveModalStatusText').textContent = `Cloud Mirror (${timeStr})`;
+      if (manual) {
+        setSyncLog(`Cloud Backup Snapshot saved (${DRIVE_BACKUP_FILENAME}) at ${timeStr}. Add OAuth Token/Client ID for live Drive account.`, 'emerald');
+      }
+    }
+
+    async function restoreFromGoogleDrive() {
+      const tokenInput = document.getElementById('inputGoogleAccessToken').value.trim();
+      if (tokenInput) googleAccessToken = tokenInput;
+
+      if (googleAccessToken && navigator.onLine) {
+        try {
+          setSyncLog('Searching Google Drive for munjiz_planner_backup.json...', 'amber');
+          const fileMeta = await findGoogleDriveBackupFile(googleAccessToken);
+          if (!fileMeta) {
+            setSyncLog('No backup file found on Google Drive yet.', 'amber');
+            return;
+          }
+          driveFileId = fileMeta.id;
+          const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileMeta.id}?alt=media`, {
+            headers: { Authorization: `Bearer ${googleAccessToken}` }
+          });
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const cloudData = await resp.json();
+          if (Array.isArray(cloudData.tasks)) {
+            tasks = cloudData.tasks;
+            reminderLeadMinutes = cloudData.reminderLeadMinutes || 15;
+            await saveState(false);
+            renderAll();
+            setSyncLog(`Restored ${tasks.length} tasks from Google Drive!`, 'emerald');
+          }
+          return;
+        } catch (err) {
+          setSyncLog(`Restore error: ${err.message}`, 'amber');
+          return;
+        }
+      }
+
+      // Restore from local IndexedDB Cloud Mirror if no token
+      if (idbInstance) {
+        try {
+          const tx = idbInstance.transaction(IDB_STORE, 'readonly');
+          const req = tx.objectStore(IDB_STORE).get('google_drive_cloud_mirror');
+          req.onsuccess = () => {
+            if (req.result && Array.isArray(req.result.tasks)) {
+              tasks = req.result.tasks;
+              reminderLeadMinutes = req.result.reminderLeadMinutes || 15;
+              renderAll();
+              setSyncLog(`Restored ${tasks.length} tasks from Cloud Mirror snapshot.`, 'emerald');
+            } else {
+              setSyncLog('No cloud snapshot found to restore.', 'amber');
+            }
+          };
+        } catch (e) {
+          setSyncLog('Could not read backup snapshot.', 'amber');
+        }
+      }
+    }
+
+    function connectGoogleDriveOAuth() {
+      const clientId = document.getElementById('inputGoogleClientId').value.trim();
+      const manualToken = document.getElementById('inputGoogleAccessToken').value.trim();
+
+      if (manualToken) {
+        googleAccessToken = manualToken;
+        document.getElementById('driveModalStatusText').textContent = 'Connected (Token)';
+        syncToGoogleDriveNow(true);
+        return;
+      }
+
+      if (!clientId) {
+        // Activate instant local Cloud Mirror + prompt user that Client ID is optional
+        document.getElementById('driveModalStatusText').textContent = 'Auto-Mirror Active';
+        syncToGoogleDriveNow(true);
+        return;
+      }
+
+      googleClientId = clientId;
+      // Dynamically load Google Identity Services if online
+      if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+        const tokenClient = window.google.accounts.oauth2.initTokenClient({
+          client_id: googleClientId,
+          scope: 'https://www.googleapis.com/auth/drive.file',
+          callback: (resp) => {
+            if (resp && resp.access_token) {
+              googleAccessToken = resp.access_token;
+              document.getElementById('driveModalStatusText').textContent = 'Connected ✓';
+              syncToGoogleDriveNow(true);
+            }
+          }
+        });
+        tokenClient.requestAccessToken({ prompt: 'consent' });
+      } else {
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.onload = () => connectGoogleDriveOAuth();
+        script.onerror = () => {
+          setSyncLog('Could not load Google OAuth script. Check connection or paste an Access Token directly.', 'amber');
+        };
+        document.head.appendChild(script);
+      }
+    }
+
+    // =========================================================================
+    // 3. BILINGUAL DICTIONARY (EN / AR)
+    // =========================================================================
+    const I18N = {
+      en: {
+        dir: 'ltr',
+        brand: 'Munjiz',
+        pwaOnline: 'PWA Offline-Ready',
+        pwaOffline: 'Offline Mode (Protected)',
+        driveSyncBtn: 'Drive Sync',
+        installPwa: 'Install App',
+        splitView: 'Split View',
+        tasksTab: 'Tasks',
+        plannerTab: 'Time Blocks',
+        testAlert: '15m Alert',
+        newTaskBtn: 'New Task',
+        statProgress: 'Completed',
+        statTracked: 'Tracked Time',
+        statTrackedSub: 'Active focus time',
+        reminderSetting: 'Upcoming Alert',
+        leadMin: (m) => `${m} min before`,
+        widgetControls: 'Pinned Timer',
+        resetPos: 'Reset Position',
+        popout: 'Pop-out ⧉',
+        tasksHeading: 'Tasks',
+        catAll: 'All',
+        cats: { Work: 'Work', Study: 'Study', Personal: 'Personal' },
+        quickPlaceholder: 'Add a new task...',
+        quickAdd: '+ Add',
+        start: 'Start',
+        end: 'End',
+        list: 'List',
+        min: 'Min',
+        statusAll: 'All',
+        statusPending: 'Active',
+        statusCompleted: 'Done',
+        searchPlaceholder: 'Search tasks...',
+        plannerHeading: 'Time Blocking',
+        upNext: 'Up Next',
+        noUpcoming: 'No upcoming task',
+        noUpcomingSub: 'Schedule a task start time',
+        startNow: 'Start ▶',
+        widgetHeader: 'Focus Timer',
+        countdown: 'Countdown',
+        stopwatch: 'Stopwatch',
+        remaining: 'Remaining',
+        elapsed: 'Elapsed',
+        startFocus: '▶ Start',
+        pauseFocus: '⏸ Pause',
+        doneBtn: '✓ Done',
+        subtasks: 'Subtasks',
+        noSubtasks: 'No subtasks yet',
+        addStepPlaceholder: '+ Add step...',
+        addBtn: 'Add',
+        emptyTasks: 'No matching tasks found.',
+        activeBadge: 'Active',
+        focusBtn: 'Focus',
+        inProgressNow: 'Now',
+        startsIn: (m) => `In ${m}m 🔔`,
+        upcomingHeadline: (m) => `Next task in ${m} min`,
+        switchBtn: 'Switch',
+        dismissBtn: 'Dismiss',
+        modalHeading: 'Task Details',
+        modalTitle: 'Title',
+        modalNotes: 'Notes',
+        modalDuration: 'Duration (min)',
+        modalColor: 'Tag Color',
+        cancel: 'Cancel',
+        save: 'Save Task',
+        tasksUnit: (d, t) => `${d} / ${t}`,
+        subtasksUnit: (d, t) => `${d} of ${t} steps`,
+        startsAtInfo: (time, diff, dur) => `Starts ${time} (in ${diff}m) · ${dur}m`,
+        pipAlert: '🔔 Next task in 15m — wrap up current task',
+        syncModalTitle: 'Google Drive Sync & Offline Protection',
+        driveSectionTitle: 'Google Drive Automatic Backup & Sync',
+        autoSyncToggle: 'Auto-Sync',
+        diskSectionTitle: 'Direct PC Disk Auto-Save & JSON Backup'
+      },
+      ar: {
+        dir: 'rtl',
+        brand: 'مُنجز',
+        pwaOnline: 'يعمل بدون إنترنت (PWA)',
+        pwaOffline: 'وضع عدم الاتصال (محمي)',
+        driveSyncBtn: 'مزامنة Drive',
+        installPwa: 'تثبيت التطبيق',
+        splitView: 'العرض المدمج',
+        tasksTab: 'المهام',
+        plannerTab: 'مخطط الوقت',
+        testAlert: 'تذكير 15 د',
+        newTaskBtn: 'مهمة جديدة',
+        statProgress: 'الإنجاز',
+        statTracked: 'الوقت المسجل',
+        statTrackedSub: 'إجمالي وقت التركيز',
+        reminderSetting: 'تنبيه المهمة القادمة',
+        leadMin: (m) => `قبل ${m} دقيقة`,
+        widgetControls: 'المؤقت العائم',
+        resetPos: 'تمركز الودجت',
+        popout: 'نافذة عائمة ⧉',
+        tasksHeading: 'المهام',
+        catAll: 'الكل',
+        cats: { Work: 'العمل', Study: 'الدراسة', Personal: 'شخصي' },
+        quickPlaceholder: 'أضف مهمة جديدة...',
+        quickAdd: '+ إضافة',
+        start: 'البدء',
+        end: 'الانتهاء',
+        list: 'القائمة',
+        min: 'دقيقة',
+        statusAll: 'الكل',
+        statusPending: 'قيد التنفيذ',
+        statusCompleted: 'المكتملة',
+        searchPlaceholder: 'بحث في المهام...',
+        plannerHeading: 'مخطط الوقت (Time Blocking)',
+        upNext: 'المهمة التالية',
+        noUpcoming: 'لا توجد مهمة تالية',
+        noUpcomingSub: 'حدد وقت بدء للمهام لتظهر هنا',
+        startNow: 'ابدأ ▶',
+        widgetHeader: 'مؤقت التركيز',
+        countdown: 'عد تنازلي',
+        stopwatch: 'ساعة إيقاف',
+        remaining: 'المتبقي',
+        elapsed: 'المنقضي',
+        startFocus: '▶ ابدأ',
+        pauseFocus: '⏸ إيقاف',
+        doneBtn: '✓ تم',
+        subtasks: 'الخطوات الفرعية',
+        noSubtasks: 'لا توجد خطوات فرعية',
+        addStepPlaceholder: '+ أضف خطوة تنفيذ...',
+        addBtn: 'إضافة',
+        emptyTasks: 'لا توجد مهام مطابقة.',
+        activeBadge: 'نشط',
+        focusBtn: 'تركيز',
+        inProgressNow: 'الآن',
+        startsIn: (m) => `بعد ${m} د 🔔`,
+        upcomingHeadline: (m) => `مهمة قادمة بعد ${m} دقيقة`,
+        switchBtn: 'انتقال',
+        dismissBtn: 'إخفاء',
+        modalHeading: 'تفاصيل المهمة',
+        modalTitle: 'العنوان',
+        modalNotes: 'ملاحظات',
+        modalDuration: 'المدة (دقيقة)',
+        modalColor: 'اللون',
+        cancel: 'إلغاء',
+        save: 'حفظ المهمة',
+        tasksUnit: (d, t) => `${d} / ${t}`,
+        subtasksUnit: (d, t) => `${d} من ${t} خطوات`,
+        startsAtInfo: (time, diff, dur) => `تبدأ ${time} (بعد ${diff} د) · ${dur} د`,
+        pipAlert: '🔔 مهمة قادمة خلال 15 د — استعد للانتهاء',
+        syncModalTitle: 'مزامنة Google Drive وحماية البيانات دون إنترنت',
+        driveSectionTitle: 'النسخ الاحتياطي التلقائي عبر Google Drive API',
+        autoSyncToggle: 'مزامنة تلقائية',
+        diskSectionTitle: 'الحفظ المباشر على قرص الكمبيوتر وملفات JSON'
+      }
+    };
+
+    const STORAGE_KEY = 'munjiz_planner_v2';
+    let currentLang = 'en';
+    let soundEnabled = true;
+    let currentCategoryFilter = 'all';
+    let currentStatusFilter = 'all';
+    let searchQuery = '';
+    let reminderLeadMinutes = 15;
+    let dismissedAlertTaskIds = {};
+    let forcedPreviewUpcomingTask = null;
+
+    // Timer state
+    let timerMode = 'countdown';
+    let timerRunning = false;
+    let timerIntervalId = null;
+    let activeTaskId = null;
+    let countdownRemainingSec = 25 * 60;
+    let countdownTotalSec = 25 * 60;
+    let stopwatchElapsedSec = 0;
+    let widgetMinimized = false;
+    let modalDraftSubtasks = [];
+
+    function t(key) {
+      return I18N[currentLang][key];
+    }
+
+    function normalizeCatKey(cat) {
+      if (cat === 'العمل' || cat === 'Work') return 'Work';
+      if (cat === 'الدراسة' || cat === 'Study') return 'Study';
+      if (cat === 'شخصي' || cat === 'Personal') return 'Personal';
+      return 'Work';
+    }
+
+    function displayCat(cat) {
+      const k = normalizeCatKey(cat);
+      return I18N[currentLang].cats[k] || k;
+    }
+
+    function getRelativeTimeStr(offsetMinutes) {
+      const d = new Date(Date.now() + offsetMinutes * 60000);
+      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+
+    function createDefaultTasks() {
+      return [
+        {
+          id: 'task_1',
+          title: 'Finalize UI layout & core interactions',
+          titleAr: 'تطوير واجهة المستخدم ومراجعة المتطلبات',
+          notes: 'Complete final spacing review and verify responsive layout before the next session.',
+          notesAr: 'مراجعة المسافات المريحة للقراءة والتأكد من جاهزية جميع العناصر.',
+          category: 'Work',
+          color: 'indigo',
+          startTime: getRelativeTimeStr(-25),
+          endTime: getRelativeTimeStr(14),
+          durationMins: 40,
+          trackedSeconds: 780,
+          completed: false,
+          subtasks: [
+            { id: 'st_1', text: 'Review design checklist', textAr: 'مراجعة قائمة التصميم', done: true },
+            { id: 'st_2', text: 'Refine dark mode contrast & typography', textAr: 'تحسين تباين الوضع الليلي والخطوط', done: true },
+            { id: 'st_3', text: 'Run final verification check', textAr: 'إجراء الاختبار النهائي', done: false }
+          ]
+        },
+        {
+          id: 'task_2',
+          title: 'Weekly sprint planning & status sync',
+          titleAr: 'اجتماع متابعة الخطة الأسبوعية',
+          notes: 'Starts in less than 15 minutes — prepare key metrics and next priorities.',
+          notesAr: 'يبدأ خلال أقل من 15 دقيقة — تحضير الملخص وأولويات المرحلة القادمة.',
+          category: 'Work',
+          color: 'amber',
+          startTime: getRelativeTimeStr(14),
+          endTime: getRelativeTimeStr(60),
+          durationMins: 45,
+          trackedSeconds: 0,
+          completed: false,
+          subtasks: [
+            { id: 'st_4', text: 'Compile weekly progress numbers', textAr: 'تجهيز أرقام الإنجاز الأسبوعي', done: false },
+            { id: 'st_5', text: 'Outline upcoming time blocks', textAr: 'توزيع المهام على الجدول الزمني', done: false }
+          ]
+        },
+        {
+          id: 'task_3',
+          title: 'Deep focus study block',
+          titleAr: 'جلسة تركيز ومذاكرة عميقة',
+          notes: 'Distraction-free session using the pinned countdown timer.',
+          notesAr: 'جلسة تركيز بدون مقاطعات مع تفعيل المؤقت التنازلي.',
+          category: 'Study',
+          color: 'emerald',
+          startTime: getRelativeTimeStr(75),
+          endTime: getRelativeTimeStr(135),
+          durationMins: 60,
+          trackedSeconds: 0,
+          completed: false,
+          subtasks: [
+            { id: 'st_6', text: 'Read core chapter notes', textAr: 'قراءة الملخص الأساسي', done: false },
+            { id: 'st_7', text: 'Complete 5 practice problems', textAr: 'حل 5 تدريبات تطبيقية', done: false },
+            { id: 'st_8', text: 'Review key takeaways', textAr: 'مراجعة النقاط الأساسية', done: false }
+          ]
+        }
+      ];
+    }
+
+    let tasks = [];
+
+    function getTaskTitle(task) {
+      if (currentLang === 'ar' && task.titleAr) return task.titleAr;
+      return task.title;
+    }
+
+    function getTaskNotes(task) {
+      if (currentLang === 'ar' && task.notesAr) return task.notesAr;
+      return task.notes || '';
+    }
+
+    function getSubtaskText(st) {
+      if (currentLang === 'ar' && st.textAr) return st.textAr;
+      return st.text;
+    }
+
+    function buildSnapshotPayload() {
+      return {
+        updatedAt: new Date().toISOString(),
+        tasks,
+        reminderLeadMinutes,
+        lang: currentLang
+      };
+    }
+
+    async function loadState() {
+      await openIndexedDB();
+      const idbData = await readFromIndexedDB();
+
+      if (idbData && Array.isArray(idbData.tasks) && idbData.tasks.length > 0) {
+        tasks = idbData.tasks.map(item => ({
+          ...item,
+          category: normalizeCatKey(item.category)
+        }));
+        reminderLeadMinutes = idbData.reminderLeadMinutes || 15;
+        currentLang = idbData.lang || 'en';
+      } else {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed.tasks) && parsed.tasks.length > 0) {
+              tasks = parsed.tasks.map(item => ({
+                ...item,
+                category: normalizeCatKey(item.category)
+              }));
+              reminderLeadMinutes = parsed.reminderLeadMinutes || 15;
+              currentLang = parsed.lang || 'en';
+            } else {
+              tasks = createDefaultTasks();
+            }
+          } else {
+            tasks = createDefaultTasks();
+          }
+        } catch (e) {
+          tasks = createDefaultTasks();
+        }
+        await writeToIndexedDB(buildSnapshotPayload());
+      }
+
+      if (!activeTaskId && tasks.length > 0) {
+        const firstIncomplete = tasks.find(item => !item.completed) || tasks[0];
+        activeTaskId = firstIncomplete.id;
+        countdownTotalSec = (firstIncomplete.durationMins || 25) * 60;
+        countdownRemainingSec = countdownTotalSec;
+        stopwatchElapsedSec = firstIncomplete.trackedSeconds || 0;
+      }
+    }
+
+    async function saveState(triggerCloud = true) {
+      const payload = buildSnapshotPayload();
+
+      // 1. Write to IndexedDB (primary durable storage)
+      await writeToIndexedDB(payload);
+
+      // 2. Write to local disk file if linked via File System Access API
+      if (localFileHandle) {
+        writeToLocalDiskFile(payload);
+      }
+
+      // 3. Fallback mirror in localStorage
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      } catch (e) {
+        // Ignore storage errors
+      }
+
+      // 4. Debounced Auto-Sync to Google Drive API
+      if (triggerCloud && autoDriveSync) {
+        if (driveSyncTimer) clearTimeout(driveSyncTimer);
+        driveSyncTimer = setTimeout(() => {
+          syncToGoogleDriveNow(false);
+        }, 1800);
+      }
+    }
+
+    // =========================================================================
+    // APPLY BILINGUAL UI & DIRECTION
+    // =========================================================================
+    function updateNetworkBadge() {
+      const dot = document.getElementById('networkStatusDot');
+      const lbl = document.getElementById('lblNetworkState');
+      if (navigator.onLine) {
+        dot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-400';
+        lbl.textContent = t('pwaOnline');
+      } else {
+        dot.className = 'w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping';
+        lbl.textContent = t('pwaOffline');
+      }
+    }
+
+    function applyLanguageUI() {
+      const htmlEl = document.documentElement;
+      htmlEl.lang = currentLang;
+      htmlEl.dir = t('dir');
+
+      const btnEn = document.getElementById('btnLangEn');
+      const btnAr = document.getElementById('btnLangAr');
+      if (currentLang === 'en') {
+        btnEn.className = 'px-2.5 py-1 rounded-lg text-xs font-semibold transition bg-indigo-600 text-white';
+        btnAr.className = 'px-2.5 py-1 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-white';
+      } else {
+        btnAr.className = 'px-2.5 py-1 rounded-lg text-xs font-semibold transition bg-indigo-600 text-white';
+        btnEn.className = 'px-2.5 py-1 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-white';
+      }
+
+      const widget = document.getElementById('pinnedTimerWidget');
+      if (!widget.dataset.dragged) {
+        if (currentLang === 'ar') {
+          widget.style.left = '24px';
+          widget.style.right = 'auto';
+        } else {
+          widget.style.right = '24px';
+          widget.style.left = 'auto';
+        }
+      }
+
+      updateNetworkBadge();
+      document.getElementById('appBrandTitle').textContent = t('brand');
+      document.getElementById('lblDriveSyncBtn').textContent = t('driveSyncBtn');
+      document.getElementById('lblInstallPwa').textContent = t('installPwa');
+      document.getElementById('tabBtnSplit').textContent = t('splitView');
+      document.getElementById('tabBtnTasks').textContent = t('tasksTab');
+      document.getElementById('tabBtnPlanner').textContent = t('plannerTab');
+      document.getElementById('lblTestAlert').textContent = t('testAlert');
+      document.getElementById('lblNewTaskBtn').textContent = t('newTaskBtn');
+
+      document.getElementById('lblStatProgress').textContent = t('statProgress');
+      document.getElementById('lblStatTracked').textContent = t('statTracked');
+      document.getElementById('lblStatTrackedSub').textContent = t('statTrackedSub');
+      document.getElementById('lblReminderSetting').textContent = t('reminderSetting');
+      document.getElementById('lblWidgetControls').textContent = t('widgetControls');
+      document.getElementById('btnToggleWidgetVisibility').textContent = t('resetPos');
+      document.getElementById('btnPopoutPip').textContent = t('popout');
+
+      [5, 10, 15, 20, 30].forEach(m => {
+        const opt = document.getElementById(`optLead${m}`);
+        if (opt) opt.textContent = t('leadMin')(m);
+      });
+
+      document.getElementById('lblTasksHeading').textContent = t('tasksHeading');
+      document.querySelectorAll('#categoryFilterBar .cat-pill').forEach(pill => {
+        const c = pill.dataset.cat;
+        pill.textContent = c === 'all' ? t('catAll') : displayCat(c);
+      });
+
+      document.getElementById('quickTitleInput').placeholder = t('quickPlaceholder');
+      document.getElementById('btnQuickAddSubmit').textContent = t('quickAdd');
+      document.getElementById('lblQuickStart').textContent = t('start');
+      document.getElementById('lblQuickEnd').textContent = t('end');
+      document.getElementById('lblQuickList').textContent = t('list');
+      document.getElementById('lblQuickMins').textContent = t('min');
+
+      const qCat = document.getElementById('quickCategorySelect');
+      Array.from(qCat.options).forEach(opt => {
+        opt.textContent = displayCat(opt.value);
+      });
+
+      document.getElementById('filterStatusAll').textContent = t('statusAll');
+      document.getElementById('filterStatusPending').textContent = t('statusPending');
+      document.getElementById('filterStatusCompleted').textContent = t('statusCompleted');
+      document.getElementById('searchTaskInput').placeholder = t('searchPlaceholder');
+
+      document.getElementById('lblPlannerHeading').textContent = t('plannerHeading');
+      document.getElementById('lblUpNext').textContent = t('upNext');
+      document.getElementById('btnStartNextTaskNow').textContent = t('startNow');
+
+      document.getElementById('lblWidgetHeader').textContent = t('widgetHeader');
+      document.getElementById('lblModeCountdown').textContent = t('countdown');
+      document.getElementById('lblModeStopwatch').textContent = t('stopwatch');
+      document.getElementById('btnWidgetCompleteTask').textContent = t('doneBtn');
+      document.getElementById('lblWidgetSubtasks').textContent = t('subtasks');
+      document.getElementById('btnSwitchToUpcoming').textContent = t('switchBtn');
+      document.getElementById('btnDismissUpcoming').textContent = t('dismissBtn');
+
+      document.getElementById('modalTitleHeading').textContent = t('modalHeading');
+      document.getElementById('lblModalTitle').textContent = t('modalTitle');
+      document.getElementById('lblModalNotes').textContent = t('modalNotes');
+      document.getElementById('lblModalStart').textContent = t('start');
+      document.getElementById('lblModalEnd').textContent = t('end');
+      document.getElementById('lblModalDuration').textContent = t('modalDuration');
+      document.getElementById('lblModalCat').textContent = t('list');
+      document.getElementById('lblModalColor').textContent = t('modalColor');
+      document.getElementById('lblModalSubtasks').textContent = t('subtasks');
+      document.getElementById('btnCancelModal').textContent = t('cancel');
+      document.getElementById('btnSaveModal').textContent = t('save');
+
+      document.getElementById('lblSyncModalTitle').textContent = t('syncModalTitle');
+      document.getElementById('lblDriveSectionTitle').textContent = t('driveSectionTitle');
+      document.getElementById('lblAutoSyncToggle').textContent = t('autoSyncToggle');
+      document.getElementById('lblDiskSectionTitle').textContent = t('diskSectionTitle');
+
+      const mCat = document.getElementById('modalCategory');
+      Array.from(mCat.options).forEach(opt => {
+        opt.textContent = displayCat(opt.value);
+      });
+
+      try {
+        const locale = currentLang === 'ar' ? 'ar-EG' : 'en-US';
+        const fmt = new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short' });
+        document.getElementById('todayDateLabel').textContent = fmt.format(new Date());
+      } catch (e) {
+        document.getElementById('todayDateLabel').textContent = '';
+      }
+
+      renderAll();
+    }
+
+    // =========================================================================
+    // WEB AUDIO SYNTHESIZER
+    // =========================================================================
+    let audioCtx = null;
+    function playAlertSound(type) {
+      if (!soundEnabled) return;
+      try {
+        if (!audioCtx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          audioCtx = new AudioContextClass();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const now = audioCtx.currentTime;
+        const notes = type === 'upcoming' ? [523.25, 659.25, 783.99] : [587.33, 880, 1174.66];
+        notes.forEach((freq, idx) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.14);
+          gain.gain.setValueAtTime(0.12, now + idx * 0.14);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.14 + 0.35);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now + idx * 0.14);
+          osc.stop(now + idx * 0.14 + 0.36);
+        });
+      } catch (e) {
+        // Ignore audio errors
+      }
+    }
+
+    // =========================================================================
+    // HELPERS
+    // =========================================================================
+    function formatSecondsMMSS(sec) {
+      const s = Math.max(0, Math.floor(sec));
+      const hrs = Math.floor(s / 3600);
+      const mins = Math.floor((s % 3600) / 60);
+      const rem = s % 60;
+      if (hrs > 0) {
+        return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(rem).padStart(2, '0')}`;
+      }
+      return `${String(mins).padStart(2, '0')}:${String(rem).padStart(2, '0')}`;
+    }
+
+    function formatSecondsHMS(sec) {
+      const s = Math.max(0, Math.floor(sec));
+      const hrs = Math.floor(s / 3600);
+      const mins = Math.floor((s % 3600) / 60);
+      const rem = s % 60;
+      return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(rem).padStart(2, '0')}`;
+    }
+
+    function timeStrToMinutes(tStr) {
+      if (!tStr || !tStr.includes(':')) return null;
+      const [h, m] = tStr.split(':').map(Number);
+      if (isNaN(h) || isNaN(m)) return null;
+      return h * 60 + m;
+    }
+
+    function getColorClasses(color) {
+      const map = {
+        indigo: { bg: 'bg-indigo-500/10', border: 'border-indigo-500/30', text: 'text-indigo-300', bar: 'bg-indigo-500' },
+        rose: { bg: 'bg-rose-500/10', border: 'border-rose-500/30', text: 'text-rose-300', bar: 'bg-rose-500' },
+        emerald: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', text: 'text-emerald-300', bar: 'bg-emerald-500' },
+        amber: { bg: 'bg-amber-500/10', border: 'border-amber-500/30', text: 'text-amber-300', bar: 'bg-amber-500' },
+        sky: { bg: 'bg-sky-500/10', border: 'border-sky-500/30', text: 'text-sky-300', bar: 'bg-sky-500' }
+      };
+      return map[color] || map.indigo;
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // =========================================================================
+    // RENDER FUNCTIONS
+    // =========================================================================
+    function renderStats() {
+      const total = tasks.length;
+      const done = tasks.filter(item => item.completed).length;
+      let totalSub = 0;
+      let doneSub = 0;
+      let totalTracked = 0;
+
+      tasks.forEach(item => {
+        totalTracked += (item.trackedSeconds || 0);
+        (item.subtasks || []).forEach(st => {
+          totalSub++;
+          if (st.done) doneSub++;
+        });
+      });
+
+      const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+      document.getElementById('statTasksCount').textContent = t('tasksUnit')(done, total);
+      document.getElementById('statSubtasksCount').textContent = t('subtasksUnit')(doneSub, totalSub);
+      document.getElementById('statPercentBadge').textContent = `${pct}%`;
+      document.getElementById('statTotalTracked').textContent = formatSecondsHMS(totalTracked);
+    }
+
+    function renderTasksList() {
+      const container = document.getElementById('tasksListContainer');
+      const filtered = tasks.filter(task => {
+        if (currentCategoryFilter !== 'all' && normalizeCatKey(task.category) !== currentCategoryFilter) return false;
+        if (currentStatusFilter === 'pending' && task.completed) return false;
+        if (currentStatusFilter === 'completed' && !task.completed) return false;
+        if (searchQuery.trim() !== '') {
+          const q = searchQuery.trim().toLowerCase();
+          const titleMatch = getTaskTitle(task).toLowerCase().includes(q);
+          const notesMatch = getTaskNotes(task).toLowerCase().includes(q);
+          const subMatch = (task.subtasks || []).some(s => getSubtaskText(s).toLowerCase().includes(q));
+          if (!titleMatch && !notesMatch && !subMatch) return false;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-12 bg-[#0b0d12] rounded-2xl border border-dashed border-[#1e2230]">
+            <p class="text-sm text-slate-400">${escapeHtml(t('emptyTasks'))}</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(task => {
+        const clr = getColorClasses(task.color);
+        const subTotal = (task.subtasks || []).length;
+        const subDone = (task.subtasks || []).filter(s => s.done).length;
+        const subPct = subTotal > 0 ? Math.round((subDone / subTotal) * 100) : (task.completed ? 100 : 0);
+        const isFocused = task.id === activeTaskId;
+        const titleText = getTaskTitle(task);
+        const notesText = getTaskNotes(task);
+
+        return `
+          <article class="rounded-2xl border ${isFocused ? 'border-indigo-500/70 bg-[#141824]' : 'border-[#1e2230] bg-[#0b0d12]'} p-5 transition space-y-4">
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex items-start gap-3.5 min-w-0 flex-1">
+                <input type="checkbox" data-action="toggle-task" data-id="${task.id}" ${task.completed ? 'checked' : ''} class="mt-1.5 w-5 h-5 rounded-md border-slate-600 accent-indigo-500 cursor-pointer shrink-0" />
+                <div class="min-w-0 flex-1 space-y-1.5">
+                  <div class="flex flex-wrap items-center gap-2.5">
+                    <h3 class="text-[15px] sm:text-base font-semibold ${task.completed ? 'line-through text-slate-500' : 'text-slate-100'} readable-text">${escapeHtml(titleText)}</h3>
+                    <span class="text-[11px] px-2.5 py-0.5 rounded-full ${clr.bg} ${clr.text} border ${clr.border} font-medium">${escapeHtml(displayCat(task.category))}</span>
+                    ${isFocused ? `<span class="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-medium">${escapeHtml(t('activeBadge'))}</span>` : ''}
+                  </div>
+                  ${notesText ? `<p class="text-xs sm:text-[13px] text-slate-400 readable-text">${escapeHtml(notesText)}</p>` : ''}
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1.5 shrink-0">
+                <button type="button" data-action="focus-task" data-id="${task.id}" class="px-3 py-1.5 rounded-xl ${isFocused ? 'bg-indigo-600 text-white' : 'bg-[#161922] hover:bg-[#222634] text-indigo-300 border border-[#242938]'} text-xs font-medium transition">
+                  ${isFocused ? '⏱️' : `▶ ${escapeHtml(t('focusBtn'))}`}
+                </button>
+                <button type="button" data-action="edit-task" data-id="${task.id}" class="p-2 rounded-xl bg-[#161922] hover:bg-[#222634] text-slate-300 text-xs transition">
+                  ✏️
+                </button>
+                <button type="button" data-action="delete-task" data-id="${task.id}" class="p-2 rounded-xl bg-[#161922] hover:bg-rose-950/60 text-rose-400 text-xs transition">
+                  🗑️
+                </button>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-3 text-xs bg-[#101218] px-4 py-2.5 rounded-xl border border-[#1a1e2b]">
+              <div class="flex flex-wrap items-center gap-4 font-timer text-slate-300">
+                <span>🕒 <strong class="text-indigo-300 font-semibold">${task.startTime || '--:--'} – ${task.endTime || '--:--'}</strong></span>
+                <span class="text-slate-600">•</span>
+                <span>${task.durationMins || 30}m</span>
+                <span class="text-slate-600">•</span>
+                <span class="text-emerald-400">${formatSecondsMMSS(task.trackedSeconds || 0)}</span>
+              </div>
+              <div class="flex items-center gap-2.5">
+                <span class="text-[11px] text-slate-400 font-timer">${subDone}/${subTotal}</span>
+                <div class="w-20 h-1.5 bg-[#1b1f2c] rounded-full overflow-hidden">
+                  <div class="h-full ${clr.bar}" style="width: ${subPct}%"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-2 pt-1">
+              ${(task.subtasks || []).map(st => `
+                <label class="flex items-center justify-between gap-3 py-1.5 px-3 rounded-xl hover:bg-[#12151f] cursor-pointer group transition">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <input type="checkbox" data-action="toggle-subtask" data-task-id="${task.id}" data-sub-id="${st.id}" ${st.done ? 'checked' : ''} class="w-4 h-4 rounded border-slate-600 accent-emerald-500 cursor-pointer shrink-0" />
+                    <span class="text-[13px] readable-text ${st.done ? 'line-through text-slate-500' : 'text-slate-200'}">${escapeHtml(getSubtaskText(st))}</span>
+                  </div>
+                  <button type="button" data-action="delete-subtask" data-task-id="${task.id}" data-sub-id="${st.id}" class="opacity-0 group-hover:opacity-100 text-xs text-slate-500 hover:text-rose-400 px-1.5 transition">✕</button>
+                </label>
+              `).join('')}
+
+              <div class="flex items-center gap-2 pt-1.5">
+                <input type="text" data-subtask-input-for="${task.id}" placeholder="${escapeHtml(t('addStepPlaceholder'))}" class="w-full bg-[#101218] border border-[#1e2230] rounded-xl px-3.5 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500" />
+                <button type="button" data-action="add-inline-subtask" data-id="${task.id}" class="px-3.5 py-2 rounded-xl bg-[#161922] hover:bg-[#222634] text-indigo-300 text-xs font-medium shrink-0">
+                  ${escapeHtml(t('addBtn'))}
+                </button>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    function renderTimeBlockingPlanner() {
+      const container = document.getElementById('timeBlockingContainer');
+      const now = new Date();
+      const nowMins = now.getHours() * 60 + now.getMinutes();
+
+      const scheduled = [...tasks].sort((a, b) => {
+        const ma = timeStrToMinutes(a.startTime) ?? 9999;
+        const mb = timeStrToMinutes(b.startTime) ?? 9999;
+        return ma - mb;
+      });
+
+      const upcomingTasks = scheduled.filter(item => {
+        if (item.completed) return false;
+        const sm = timeStrToMinutes(item.startTime);
+        return sm !== null && sm > nowMins;
+      });
+
+      const nextTask = forcedPreviewUpcomingTask || upcomingTasks[0] || null;
+      const nextTitleEl = document.getElementById('plannerNextTaskTitle');
+      const nextTimeEl = document.getElementById('plannerNextTaskTime');
+      const btnStartNext = document.getElementById('btnStartNextTaskNow');
+
+      if (nextTask) {
+        const sm = timeStrToMinutes(nextTask.startTime);
+        const diff = forcedPreviewUpcomingTask ? reminderLeadMinutes : Math.max(0, sm - nowMins);
+        nextTitleEl.textContent = getTaskTitle(nextTask);
+        nextTimeEl.textContent = t('startsAtInfo')(nextTask.startTime, diff, nextTask.durationMins);
+        btnStartNext.dataset.id = nextTask.id;
+        btnStartNext.disabled = false;
+      } else {
+        nextTitleEl.textContent = t('noUpcoming');
+        nextTimeEl.textContent = t('noUpcomingSub');
+        btnStartNext.dataset.id = '';
+      }
+
+      container.innerHTML = scheduled.map(task => {
+        const clr = getColorClasses(task.color);
+        const sm = timeStrToMinutes(task.startTime);
+        const em = timeStrToMinutes(task.endTime);
+        const isCurrentNow = sm !== null && em !== null && nowMins >= sm && nowMins <= em && !task.completed;
+        const minsUntil = sm !== null ? (sm - nowMins) : null;
+        const isStartingSoon = !task.completed && minsUntil !== null && minsUntil > 0 && minsUntil <= reminderLeadMinutes;
+
+        return `
+          <div class="flex items-stretch gap-4 p-4 rounded-2xl border ${isCurrentNow ? 'border-emerald-500/60 bg-emerald-950/15' : isStartingSoon ? 'border-amber-500/70 bg-amber-950/15' : 'border-[#1e2230] bg-[#0b0d12]'} transition">
+            <div class="w-16 shrink-0 flex flex-col justify-between font-timer text-xs text-slate-400">
+              <span class="font-semibold text-slate-200">${task.startTime || '--:--'}</span>
+              <span class="text-[11px] text-slate-500">${task.durationMins || 30}m</span>
+              <span class="text-[11px]">${task.endTime || '--:--'}</span>
+            </div>
+
+            <div class="flex-1 min-w-0 space-y-2 border-s border-[#1e2230] ps-4">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-sm font-semibold ${task.completed ? 'line-through text-slate-500' : 'text-slate-100'} truncate readable-text">${escapeHtml(getTaskTitle(task))}</span>
+                ${isCurrentNow ? `<span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold shrink-0">${escapeHtml(t('inProgressNow'))}</span>` : ''}
+                ${isStartingSoon ? `<span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-semibold shrink-0">${escapeHtml(t('startsIn')(minsUntil))}</span>` : ''}
+              </div>
+              <div class="flex items-center justify-between pt-0.5">
+                <span class="text-[11px] px-2.5 py-0.5 rounded-full ${clr.bg} ${clr.text}">${escapeHtml(displayCat(task.category))}</span>
+                <button type="button" data-action="focus-task" data-id="${task.id}" class="text-xs font-medium text-indigo-400 hover:text-indigo-300">
+                  ▶ ${escapeHtml(t('focusBtn'))}
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderPinnedWidget() {
+      const selectEl = document.getElementById('widgetTaskSelect');
+      const activeTask = tasks.find(item => item.id === activeTaskId) || tasks[0] || null;
+      if (activeTask && activeTaskId !== activeTask.id) {
+        activeTaskId = activeTask.id;
+      }
+
+      selectEl.innerHTML = tasks.map(item => `
+        <option value="${item.id}" class="bg-[#101218] text-white" ${item.id === activeTaskId ? 'selected' : ''}>
+          ${item.completed ? '✓ ' : ''}${escapeHtml(getTaskTitle(item))}
+        </option>
+      `).join('');
+
+      const slotEl = document.getElementById('widgetTaskTimeSlot');
+      const subListEl = document.getElementById('widgetSubtasksList');
+      const subProgEl = document.getElementById('widgetSubtaskProgressText');
+
+      if (activeTask) {
+        slotEl.textContent = `${activeTask.startTime || '--:--'}–${activeTask.endTime || '--:--'}`;
+        const subs = activeTask.subtasks || [];
+        const doneCount = subs.filter(s => s.done).length;
+        subProgEl.textContent = `${doneCount}/${subs.length}`;
+
+        if (subs.length === 0) {
+          subListEl.innerHTML = `<p class="text-[11px] text-slate-500 py-1">${escapeHtml(t('noSubtasks'))}</p>`;
+        } else {
+          subListEl.innerHTML = subs.map(st => `
+            <label class="flex items-center gap-2.5 py-1 px-2 rounded-lg hover:bg-[#151822] cursor-pointer">
+              <input type="checkbox" data-action="toggle-subtask" data-task-id="${activeTask.id}" data-sub-id="${st.id}" ${st.done ? 'checked' : ''} class="w-3.5 h-3.5 rounded accent-emerald-500 cursor-pointer shrink-0" />
+              <span class="truncate readable-text ${st.done ? 'line-through text-slate-500' : 'text-slate-200'}">${escapeHtml(getSubtaskText(st))}</span>
+            </label>
+          `).join('');
+        }
+      } else {
+        slotEl.textContent = '--:--';
+        subProgEl.textContent = '0/0';
+        subListEl.innerHTML = '';
+      }
+
+      updateTimerDisplayUI();
+    }
+
+    function updateTimerDisplayUI() {
+      const displayEl = document.getElementById('widgetDigitalDisplay');
+      const barEl = document.getElementById('widgetProgressBar');
+      const startBtn = document.getElementById('btnTimerStartPause');
+      const captionEl = document.getElementById('timerModeCaption');
+      const presetBtns = document.getElementById('countdownPresetBtns');
+      const modeBtnCountdown = document.getElementById('modeBtnCountdown');
+      const modeBtnStopwatch = document.getElementById('modeBtnStopwatch');
+
+      if (timerMode === 'countdown') {
+        modeBtnCountdown.className = 'py-2 rounded-lg bg-indigo-600 text-white transition flex items-center justify-center gap-1.5';
+        modeBtnStopwatch.className = 'py-2 rounded-lg text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5';
+        captionEl.textContent = t('remaining');
+        presetBtns.classList.remove('hidden');
+        displayEl.textContent = formatSecondsMMSS(countdownRemainingSec);
+        const pct = countdownTotalSec > 0 ? Math.max(0, Math.min(100, (countdownRemainingSec / countdownTotalSec) * 100)) : 0;
+        barEl.style.width = `${pct}%`;
+      } else {
+        modeBtnStopwatch.className = 'py-2 rounded-lg bg-emerald-600 text-white transition flex items-center justify-center gap-1.5';
+        modeBtnCountdown.className = 'py-2 rounded-lg text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5';
+        captionEl.textContent = t('elapsed');
+        presetBtns.classList.add('hidden');
+        displayEl.textContent = formatSecondsHMS(stopwatchElapsedSec);
+        const pct = ((stopwatchElapsedSec % 3600) / 3600) * 100;
+        barEl.style.width = `${Math.max(8, pct)}%`;
+      }
+
+      if (timerRunning) {
+        startBtn.textContent = t('pauseFocus');
+        startBtn.className = 'flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs transition';
+      } else {
+        startBtn.textContent = t('startFocus');
+        startBtn.className = 'flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition';
+      }
+
+      drawPipCanvasFrame();
+    }
+
+    function checkUpcomingReminders() {
+      const bannerEl = document.getElementById('widgetUpcomingBanner');
+      const headlineEl = document.getElementById('upcomingBannerHeadline');
+      const nameEl = document.getElementById('upcomingBannerTaskName');
+      const switchBtn = document.getElementById('btnSwitchToUpcoming');
+
+      if (forcedPreviewUpcomingTask) {
+        bannerEl.classList.remove('hidden');
+        headlineEl.textContent = t('upcomingHeadline')(reminderLeadMinutes);
+        nameEl.textContent = `${getTaskTitle(forcedPreviewUpcomingTask)} (${forcedPreviewUpcomingTask.startTime})`;
+        switchBtn.dataset.id = forcedPreviewUpcomingTask.id;
+        return;
+      }
+
+      const now = new Date();
+      const nowMins = now.getHours() * 60 + now.getMinutes();
+
+      const candidate = tasks.find(item => {
+        if (item.completed || item.id === activeTaskId) return false;
+        if (dismissedAlertTaskIds[item.id]) return false;
+        const sm = timeStrToMinutes(item.startTime);
+        if (sm === null) return false;
+        const diff = sm - nowMins;
+        return diff > 0 && diff <= reminderLeadMinutes;
+      });
+
+      if (candidate) {
+        const sm = timeStrToMinutes(candidate.startTime);
+        const diff = sm - nowMins;
+        const wasHidden = bannerEl.classList.contains('hidden');
+        bannerEl.classList.remove('hidden');
+        headlineEl.textContent = t('upcomingHeadline')(diff);
+        nameEl.textContent = `${getTaskTitle(candidate)} (${candidate.startTime})`;
+        switchBtn.dataset.id = candidate.id;
+        if (wasHidden) {
+          playAlertSound('upcoming');
+        }
+      } else {
+        bannerEl.classList.add('hidden');
+      }
+    }
+
+    function toggleTimerStartPause() {
+      if (timerRunning) {
+        clearInterval(timerIntervalId);
+        timerIntervalId = null;
+        timerRunning = false;
+        updateTimerDisplayUI();
+        return;
+      }
+
+      timerRunning = true;
+      updateTimerDisplayUI();
+      timerIntervalId = setInterval(() => {
+        const activeTask = tasks.find(item => item.id === activeTaskId);
+        if (activeTask) {
+          activeTask.trackedSeconds = (activeTask.trackedSeconds || 0) + 1;
+        }
+
+        if (timerMode === 'countdown') {
+          if (countdownRemainingSec > 0) {
+            countdownRemainingSec--;
+          } else {
+            clearInterval(timerIntervalId);
+            timerIntervalId = null;
+            timerRunning = false;
+            playAlertSound('done');
+          }
+        } else {
+          stopwatchElapsedSec++;
+        }
+
+        saveState(false);
+        updateTimerDisplayUI();
+        renderStats();
+      }, 1000);
+    }
+
+    function resetCurrentTimer() {
+      if (timerIntervalId) {
+        clearInterval(timerIntervalId);
+        timerIntervalId = null;
+      }
+      timerRunning = false;
+      const activeTask = tasks.find(item => item.id === activeTaskId);
+      if (timerMode === 'countdown') {
+        countdownTotalSec = ((activeTask && activeTask.durationMins) ? activeTask.durationMins : 25) * 60;
+        countdownRemainingSec = countdownTotalSec;
+      } else {
+        stopwatchElapsedSec = 0;
+      }
+      updateTimerDisplayUI();
+    }
+
+    function selectActiveTask(taskId, autoStart = false) {
+      const found = tasks.find(item => item.id === taskId);
+      if (!found) return;
+      activeTaskId = found.id;
+      countdownTotalSec = (found.durationMins || 25) * 60;
+      countdownRemainingSec = countdownTotalSec;
+      stopwatchElapsedSec = found.trackedSeconds || 0;
+      renderAll();
+      if (autoStart && !timerRunning) {
+        toggleTimerStartPause();
+      }
+    }
+
+    // =========================================================================
+    // PICTURE-IN-PICTURE FLOATING WINDOW
+    // =========================================================================
+    function drawPipCanvasFrame() {
+      const canvas = document.getElementById('pipCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const activeTask = tasks.find(item => item.id === activeTaskId);
+
+      ctx.fillStyle = '#08090c';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.strokeStyle = '#4f46e5';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(1.5, 1.5, canvas.width - 3, canvas.height - 3);
+
+      ctx.fillStyle = '#a5b4fc';
+      ctx.font = '600 14px Inter, Cairo, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(timerMode === 'countdown' ? `⏳ ${t('countdown')}` : `⏱️ ${t('stopwatch')}`, canvas.width / 2, 30);
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 16px Inter, Cairo, sans-serif';
+      const title = activeTask ? getTaskTitle(activeTask).slice(0, 36) : '';
+      ctx.fillText(title, canvas.width / 2, 60);
+
+      ctx.fillStyle = '#34d399';
+      ctx.font = 'bold 52px Inter, monospace';
+      const timeText = timerMode === 'countdown' ? formatSecondsMMSS(countdownRemainingSec) : formatSecondsHMS(stopwatchElapsedSec);
+      ctx.fillText(timeText, canvas.width / 2, 130);
+
+      const bannerVisible = !document.getElementById('widgetUpcomingBanner').classList.contains('hidden');
+      if (bannerVisible) {
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillRect(16, 158, canvas.width - 32, 40);
+        ctx.fillStyle = '#08090c';
+        ctx.font = 'bold 13px Inter, Cairo, sans-serif';
+        ctx.fillText(t('pipAlert'), canvas.width / 2, 183);
+      } else if (activeTask) {
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '13px Inter, monospace';
+        ctx.fillText(`${activeTask.startTime} – ${activeTask.endTime}`, canvas.width / 2, 182);
+      }
+    }
+
+    async function launchAlwaysOnTopPip() {
+      try {
+        drawPipCanvasFrame();
+        const canvas = document.getElementById('pipCanvas');
+        const video = document.getElementById('pipVideo');
+        if (document.pictureInPictureElement) {
+          await document.exitPictureInPicture();
+          return;
+        }
+        if (canvas.captureStream && document.pictureInPictureEnabled) {
+          const stream = canvas.captureStream(15);
+          video.srcObject = stream;
+          await video.play();
+          await video.requestPictureInPicture();
+        } else {
+          centerPinnedWidget();
+        }
+      } catch (err) {
+        centerPinnedWidget();
+      }
+    }
+
+    function centerPinnedWidget() {
+      const w = document.getElementById('pinnedTimerWidget');
+      delete w.dataset.dragged;
+      w.style.bottom = '24px';
+      w.style.top = 'auto';
+      if (currentLang === 'ar') {
+        w.style.left = '24px';
+        w.style.right = 'auto';
+      } else {
+        w.style.right = '24px';
+        w.style.left = 'auto';
+      }
+      if (widgetMinimized) {
+        toggleMinimizeWidget();
+      }
+    }
+
+    function toggleMinimizeWidget() {
+      widgetMinimized = !widgetMinimized;
+      const body = document.getElementById('widgetBodyContent');
+      const btn = document.getElementById('btnMinimizeWidget');
+      if (widgetMinimized) {
+        body.classList.add('hidden');
+        btn.textContent = '+';
+      } else {
+        body.classList.remove('hidden');
+        btn.textContent = '_';
+      }
+    }
+
+    function initDraggableWidget() {
+      const widget = document.getElementById('pinnedTimerWidget');
+      const header = document.getElementById('widgetDragHeader');
+      let isDragging = false;
+      let startX = 0, startY = 0, initialLeft = 0, initialTop = 0;
+
+      header.addEventListener('pointerdown', (e) => {
+        if (e.target.closest('button')) return;
+        isDragging = true;
+        widget.dataset.dragged = 'true';
+        const rect = widget.getBoundingClientRect();
+        startX = e.clientX;
+        startY = e.clientY;
+        initialLeft = rect.left;
+        initialTop = rect.top;
+        widget.style.bottom = 'auto';
+        widget.style.right = 'auto';
+        widget.style.left = `${initialLeft}px`;
+        widget.style.top = `${initialTop}px`;
+        header.setPointerCapture(e.pointerId);
+      });
+
+      header.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        const maxLeft = window.innerWidth - widget.offsetWidth - 8;
+        const maxTop = window.innerHeight - widget.offsetHeight - 8;
+        widget.style.left = `${Math.max(8, Math.min(maxLeft, initialLeft + dx))}px`;
+        widget.style.top = `${Math.max(8, Math.min(maxTop, initialTop + dy))}px`;
+      });
+
+      header.addEventListener('pointerup', () => {
+        isDragging = false;
+      });
+    }
+
+    // =========================================================================
+    // MODAL HANDLERS
+    // =========================================================================
+    function openTaskModal(taskId = null) {
+      const overlay = document.getElementById('taskModalOverlay');
+      const idInput = document.getElementById('modalTaskId');
+      const titleInput = document.getElementById('modalTaskTitle');
+      const notesInput = document.getElementById('modalTaskNotes');
+      const startInput = document.getElementById('modalStartTime');
+      const endInput = document.getElementById('modalEndTime');
+      const durInput = document.getElementById('modalDurationMins');
+      const catInput = document.getElementById('modalCategory');
+      const colorInput = document.getElementById('modalColor');
+
+      if (taskId) {
+        const item = tasks.find(x => x.id === taskId);
+        if (!item) return;
+        idInput.value = item.id;
+        titleInput.value = getTaskTitle(item);
+        notesInput.value = getTaskNotes(item);
+        startInput.value = item.startTime || getRelativeTimeStr(15);
+        endInput.value = item.endTime || getRelativeTimeStr(60);
+        durInput.value = item.durationMins || 45;
+        catInput.value = normalizeCatKey(item.category);
+        colorInput.value = item.color || 'indigo';
+        modalDraftSubtasks = (item.subtasks || []).map(s => ({ ...s }));
+      } else {
+        idInput.value = '';
+        titleInput.value = '';
+        notesInput.value = '';
+        startInput.value = getRelativeTimeStr(15);
+        endInput.value = getRelativeTimeStr(60);
+        durInput.value = 45;
+        catInput.value = 'Work';
+        colorInput.value = 'indigo';
+        modalDraftSubtasks = [];
+      }
+
+      renderModalSubtasks();
+      overlay.classList.remove('hidden');
+      overlay.classList.add('flex');
+      titleInput.focus();
+    }
+
+    function closeTaskModal() {
+      const overlay = document.getElementById('taskModalOverlay');
+      overlay.classList.add('hidden');
+      overlay.classList.remove('flex');
+    }
+
+    function renderModalSubtasks() {
+      const container = document.getElementById('modalSubtasksContainer');
+      if (modalDraftSubtasks.length === 0) {
+        container.innerHTML = `<p class="text-[11px] text-slate-500">${escapeHtml(t('noSubtasks'))}</p>`;
+        return;
+      }
+      container.innerHTML = modalDraftSubtasks.map((st, idx) => `
+        <div class="flex items-center justify-between bg-[#13161f] px-3 py-2 rounded-lg border border-[#222634] text-xs">
+          <span class="text-slate-200">${escapeHtml(getSubtaskText(st))}</span>
+          <button type="button" data-modal-del-sub="${idx}" class="text-rose-400 hover:text-rose-300 font-bold px-1">✕</button>
+        </div>
+      `).join('');
+    }
+
+    function renderAll() {
+      renderStats();
+      renderTasksList();
+      renderTimeBlockingPlanner();
+      renderPinnedWidget();
+      checkUpcomingReminders();
+    }
+
+    // =========================================================================
+    // INITIALIZATION & EVENTS
+    // =========================================================================
+    window.addEventListener('DOMContentLoaded', async () => {
+      setupPwaArchitecture();
+      await loadState();
+      initDraggableWidget();
+
+      document.getElementById('quickStartInput').value = getRelativeTimeStr(15);
+      document.getElementById('quickEndInput').value = getRelativeTimeStr(60);
+      document.getElementById('reminderLeadSelect').value = String(reminderLeadMinutes);
+
+      applyLanguageUI();
+
+      // Network Online / Offline Auto-Sync Listener
+      window.addEventListener('online', () => {
+        updateNetworkBadge();
+        if (pendingOfflineSync || autoDriveSync) {
+          syncToGoogleDriveNow(false);
+        }
+      });
+      window.addEventListener('offline', () => {
+        updateNetworkBadge();
+      });
+
+      // PWA Install Button
+      document.getElementById('btnInstallPwa').addEventListener('click', async () => {
+        if (deferredPwaPrompt) {
+          deferredPwaPrompt.prompt();
+          await deferredPwaPrompt.userChoice;
+          deferredPwaPrompt = null;
+        } else {
+          const syncModal = document.getElementById('syncModalOverlay');
+          syncModal.classList.remove('hidden');
+          syncModal.classList.add('flex');
+          setSyncLog('PWA Ready: In Chrome/Edge, click the Install icon in the address bar (or use the downloadable PWA zip package).', 'emerald');
+        }
+      });
+
+      // Cloud Sync Modal Events
+      const syncOverlay = document.getElementById('syncModalOverlay');
+      document.getElementById('btnOpenSyncModal').addEventListener('click', () => {
+        syncOverlay.classList.remove('hidden');
+        syncOverlay.classList.add('flex');
+      });
+      document.getElementById('btnCloseSyncModal').addEventListener('click', () => {
+        syncOverlay.classList.add('hidden');
+        syncOverlay.classList.remove('flex');
+      });
+      document.getElementById('chkAutoDriveSync').addEventListener('change', (e) => {
+        autoDriveSync = e.target.checked;
+      });
+      document.getElementById('btnConnectGoogleDrive').addEventListener('click', connectGoogleDriveOAuth);
+      document.getElementById('btnSyncDriveNow').addEventListener('click', () => syncToGoogleDriveNow(true));
+      document.getElementById('btnRestoreFromDrive').addEventListener('click', restoreFromGoogleDrive);
+
+      // Link Local Disk File (File System Access API)
+      document.getElementById('btnLinkLocalDiskFile').addEventListener('click', async () => {
+        if ('showSaveFilePicker' in window) {
+          try {
+            localFileHandle = await window.showSaveFilePicker({
+              suggestedName: DRIVE_BACKUP_FILENAME,
+              types: [{ description: 'JSON Backup', accept: { 'application/json': ['.json'] } }]
+            });
+            await writeToLocalDiskFile(buildSnapshotPayload());
+            setSyncLog('Linked to local disk file! Every task change now auto-writes directly to your hard drive.', 'emerald');
+          } catch (e) {
+            setSyncLog('Local disk file selection cancelled or restricted by iframe.', 'amber');
+          }
+        } else {
+          // Fallback download
+          document.getElementById('btnExportJsonBackup').click();
+        }
+      });
+
+      // Manual Export JSON
+      document.getElementById('btnExportJsonBackup').addEventListener('click', () => {
+        const blob = new Blob([JSON.stringify(buildSnapshotPayload(), null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = DRIVE_BACKUP_FILENAME;
+        a.click();
+        URL.revokeObjectURL(url);
+        setSyncLog('Exported munjiz_planner_backup.json to your device.', 'emerald');
+      });
+
+      // Manual Import JSON
+      document.getElementById('inputImportJsonFile').addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+          try {
+            const parsed = JSON.parse(ev.target.result);
+            if (Array.isArray(parsed.tasks)) {
+              tasks = parsed.tasks;
+              reminderLeadMinutes = parsed.reminderLeadMinutes || 15;
+              await saveState(true);
+              renderAll();
+              setSyncLog(`Imported ${tasks.length} tasks and saved to IndexedDB.`, 'emerald');
+            }
+          } catch (err) {
+            setSyncLog('Invalid JSON backup file.', 'amber');
+          }
+        };
+        reader.readAsText(file);
+      });
+
+      // Language Switch Buttons
+      document.getElementById('btnLangEn').addEventListener('click', () => {
+        currentLang = 'en';
+        saveState();
+        applyLanguageUI();
+      });
+      document.getElementById('btnLangAr').addEventListener('click', () => {
+        currentLang = 'ar';
+        saveState();
+        applyLanguageUI();
+      });
+
+      const updateClock = () => {
+        const now = new Date();
+        document.getElementById('liveClockDisplay').textContent = now.toLocaleTimeString('en-GB');
+        checkUpcomingReminders();
+      };
+      updateClock();
+      setInterval(updateClock, 1000);
+
+      // View Mode Tabs
+      const tabSplit = document.getElementById('tabBtnSplit');
+      const tabTasks = document.getElementById('tabBtnTasks');
+      const tabPlanner = document.getElementById('tabBtnPlanner');
+      const tasksSec = document.getElementById('tasksSection');
+      const plannerSec = document.getElementById('plannerSection');
+
+      function setViewMode(mode) {
+        const activeCls = 'px-4 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all bg-indigo-600 text-white';
+        const idleCls = 'px-4 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-slate-400 hover:text-white';
+        tabSplit.className = mode === 'split' ? activeCls : idleCls;
+        tabTasks.className = mode === 'tasks' ? activeCls : idleCls;
+        tabPlanner.className = mode === 'planner' ? activeCls : idleCls;
+
+        if (mode === 'split') {
+          tasksSec.className = 'lg:col-span-7 bg-[#101218] border border-[#1e2230] rounded-2xl p-6 space-y-6';
+          plannerSec.className = 'lg:col-span-5 bg-[#101218] border border-[#1e2230] rounded-2xl p-6 space-y-6';
+        } else if (mode === 'tasks') {
+          tasksSec.className = 'lg:col-span-12 bg-[#101218] border border-[#1e2230] rounded-2xl p-6 space-y-6';
+          plannerSec.className = 'hidden';
+        } else {
+          tasksSec.className = 'hidden';
+          plannerSec.className = 'lg:col-span-12 bg-[#101218] border border-[#1e2230] rounded-2xl p-6 space-y-6';
+        }
+      }
+
+      tabSplit.addEventListener('click', () => setViewMode('split'));
+      tabTasks.addEventListener('click', () => setViewMode('tasks'));
+      tabPlanner.addEventListener('click', () => setViewMode('planner'));
+
+      // Quick Task Form
+      document.getElementById('quickTaskForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const titleEl = document.getElementById('quickTitleInput');
+        const title = titleEl.value.trim();
+        if (!title) return;
+        const startTime = document.getElementById('quickStartInput').value || getRelativeTimeStr(15);
+        const endTime = document.getElementById('quickEndInput').value || getRelativeTimeStr(60);
+        const category = document.getElementById('quickCategorySelect').value || 'Work';
+        const durationMins = parseInt(document.getElementById('quickDurationInput').value, 10) || 45;
+
+        const newTask = {
+          id: 'task_' + Date.now(),
+          title,
+          notes: '',
+          category,
+          color: 'indigo',
+          startTime,
+          endTime,
+          durationMins,
+          trackedSeconds: 0,
+          completed: false,
+          subtasks: []
+        };
+        tasks.unshift(newTask);
+        activeTaskId = newTask.id;
+        countdownTotalSec = durationMins * 60;
+        countdownRemainingSec = countdownTotalSec;
+        titleEl.value = '';
+        saveState();
+        renderAll();
+      });
+
+      // Delegated Task & Subtask Actions
+      document.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        const action = btn.dataset.action;
+        const id = btn.dataset.id;
+
+        if (action === 'toggle-task') {
+          const item = tasks.find(x => x.id === id);
+          if (item) {
+            item.completed = btn.checked;
+            saveState();
+            renderAll();
+          }
+        } else if (action === 'focus-task') {
+          selectActiveTask(id, false);
+        } else if (action === 'edit-task') {
+          openTaskModal(id);
+        } else if (action === 'delete-task') {
+          tasks = tasks.filter(x => x.id !== id);
+          if (activeTaskId === id) {
+            activeTaskId = tasks[0] ? tasks[0].id : null;
+          }
+          saveState();
+          renderAll();
+        } else if (action === 'toggle-subtask') {
+          const taskId = btn.dataset.taskId;
+          const subId = btn.dataset.subId;
+          const item = tasks.find(x => x.id === taskId);
+          if (item && item.subtasks) {
+            const st = item.subtasks.find(s => s.id === subId);
+            if (st) {
+              st.done = btn.checked;
+              saveState();
+              renderAll();
+            }
+          }
+        } else if (action === 'delete-subtask') {
+          const taskId = btn.dataset.taskId;
+          const subId = btn.dataset.subId;
+          const item = tasks.find(x => x.id === taskId);
+          if (item && item.subtasks) {
+            item.subtasks = item.subtasks.filter(s => s.id !== subId);
+            saveState();
+            renderAll();
+          }
+        } else if (action === 'add-inline-subtask') {
+          const input = document.querySelector(`[data-subtask-input-for="${id}"]`);
+          if (input && input.value.trim()) {
+            const item = tasks.find(x => x.id === id);
+            if (item) {
+              item.subtasks = item.subtasks || [];
+              item.subtasks.push({
+                id: 'st_' + Date.now() + Math.random().toString(36).slice(2, 5),
+                text: input.value.trim(),
+                done: false
+              });
+              input.value = '';
+              saveState();
+              renderAll();
+            }
+          }
+        }
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.target.matches('[data-subtask-input-for]')) {
+          e.preventDefault();
+          const id = e.target.getAttribute('data-subtask-input-for');
+          const text = e.target.value.trim();
+          if (!text) return;
+          const item = tasks.find(x => x.id === id);
+          if (item) {
+            item.subtasks = item.subtasks || [];
+            item.subtasks.push({
+              id: 'st_' + Date.now(),
+              text,
+              done: false
+            });
+            e.target.value = '';
+            saveState();
+            renderAll();
+          }
+        }
+      });
+
+      // Category Filter
+      document.getElementById('categoryFilterBar').addEventListener('click', (e) => {
+        const pill = e.target.closest('.cat-pill');
+        if (!pill) return;
+        currentCategoryFilter = pill.dataset.cat;
+        document.querySelectorAll('.cat-pill').forEach(p => {
+          p.className = p.dataset.cat === currentCategoryFilter
+            ? 'cat-pill px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-600 text-white'
+            : 'cat-pill px-3 py-1.5 rounded-lg text-xs font-medium bg-[#161922] text-slate-300 hover:bg-[#1e2230]';
+        });
+        renderTasksList();
+      });
+
+      // Status Filter
+      document.querySelectorAll('.status-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+          currentStatusFilter = pill.dataset.status;
+          document.querySelectorAll('.status-pill').forEach(p => {
+            p.className = p.dataset.status === currentStatusFilter
+              ? 'status-pill px-3 py-1.5 rounded-lg bg-[#161922] text-indigo-300 border border-indigo-500/30 font-medium'
+              : 'status-pill px-3 py-1.5 rounded-lg bg-[#161922]/60 text-slate-400 hover:text-slate-200';
+          });
+          renderTasksList();
+        });
+      });
+
+      document.getElementById('searchTaskInput').addEventListener('input', (e) => {
+        searchQuery = e.target.value;
+        renderTasksList();
+      });
+
+      document.getElementById('reminderLeadSelect').addEventListener('change', (e) => {
+        reminderLeadMinutes = parseInt(e.target.value, 10) || 15;
+        dismissedAlertTaskIds = {};
+        saveState();
+        renderAll();
+      });
+
+      document.getElementById('btnSimulateUpcoming').addEventListener('click', () => {
+        const nextCandidate = tasks.find(item => !item.completed && item.id !== activeTaskId) || tasks[0];
+        if (nextCandidate) {
+          forcedPreviewUpcomingTask = nextCandidate;
+          playAlertSound('upcoming');
+          renderAll();
+        }
+      });
+
+      document.getElementById('btnDismissUpcoming').addEventListener('click', () => {
+        forcedPreviewUpcomingTask = null;
+        const switchId = document.getElementById('btnSwitchToUpcoming').dataset.id;
+        if (switchId) dismissedAlertTaskIds[switchId] = true;
+        document.getElementById('widgetUpcomingBanner').classList.add('hidden');
+      });
+
+      document.getElementById('btnSwitchToUpcoming').addEventListener('click', (e) => {
+        const targetId = e.currentTarget.dataset.id;
+        forcedPreviewUpcomingTask = null;
+        if (targetId) {
+          dismissedAlertTaskIds[targetId] = true;
+          selectActiveTask(targetId, true);
+        }
+      });
+
+      document.getElementById('btnStartNextTaskNow').addEventListener('click', (e) => {
+        const targetId = e.currentTarget.dataset.id;
+        if (targetId) selectActiveTask(targetId, true);
+      });
+
+      document.getElementById('btnSoundToggle').addEventListener('click', () => {
+        soundEnabled = !soundEnabled;
+        document.getElementById('soundIcon').textContent = soundEnabled ? '🔊' : '🔇';
+        if (soundEnabled) playAlertSound('upcoming');
+      });
+
+      document.getElementById('modeBtnCountdown').addEventListener('click', () => {
+        timerMode = 'countdown';
+        updateTimerDisplayUI();
+      });
+
+      document.getElementById('modeBtnStopwatch').addEventListener('click', () => {
+        timerMode = 'stopwatch';
+        updateTimerDisplayUI();
+      });
+
+      document.getElementById('widgetTaskSelect').addEventListener('change', (e) => {
+        selectActiveTask(e.target.value, false);
+      });
+
+      document.querySelectorAll('.preset-min-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const mins = parseInt(btn.dataset.mins, 10) || 25;
+          timerMode = 'countdown';
+          countdownTotalSec = mins * 60;
+          countdownRemainingSec = countdownTotalSec;
+          updateTimerDisplayUI();
+        });
+      });
+
+      document.getElementById('btnTimerStartPause').addEventListener('click', toggleTimerStartPause);
+      document.getElementById('btnTimerReset').addEventListener('click', resetCurrentTimer);
+
+      document.getElementById('btnWidgetCompleteTask').addEventListener('click', () => {
+        const item = tasks.find(x => x.id === activeTaskId);
+        if (item) {
+          item.completed = true;
+          (item.subtasks || []).forEach(s => { s.done = true; });
+          playAlertSound('done');
+          const next = tasks.find(x => !x.completed);
+          if (next) {
+            selectActiveTask(next.id, false);
+          } else {
+            saveState();
+            renderAll();
+          }
+        }
+      });
+
+      document.getElementById('btnMinimizeWidget').addEventListener('click', toggleMinimizeWidget);
+      document.getElementById('btnToggleWidgetVisibility').addEventListener('click', centerPinnedWidget);
+      document.getElementById('btnPopoutPip').addEventListener('click', launchAlwaysOnTopPip);
+      document.getElementById('btnWidgetPip').addEventListener('click', launchAlwaysOnTopPip);
+
+      document.getElementById('btnOpenNewTask').addEventListener('click', () => openTaskModal(null));
+      document.getElementById('btnCloseModal').addEventListener('click', closeTaskModal);
+      document.getElementById('btnCancelModal').addEventListener('click', closeTaskModal);
+
+      document.getElementById('btnAddSubtaskModal').addEventListener('click', () => {
+        const inp = document.getElementById('modalNewSubtaskInput');
+        if (!inp.value.trim()) return;
+        modalDraftSubtasks.push({
+          id: 'st_' + Date.now() + Math.random().toString(36).slice(2, 5),
+          text: inp.value.trim(),
+          done: false
+        });
+        inp.value = '';
+        renderModalSubtasks();
+      });
+
+      document.getElementById('modalNewSubtaskInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          document.getElementById('btnAddSubtaskModal').click();
+        }
+      });
+
+      document.getElementById('modalSubtasksContainer').addEventListener('click', (e) => {
+        const delBtn = e.target.closest('[data-modal-del-sub]');
+        if (!delBtn) return;
+        const idx = parseInt(delBtn.getAttribute('data-modal-del-sub'), 10);
+        modalDraftSubtasks.splice(idx, 1);
+        renderModalSubtasks();
+      });
+
+      document.getElementById('fullTaskForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const id = document.getElementById('modalTaskId').value;
+        const title = document.getElementById('modalTaskTitle').value.trim();
+        if (!title) return;
+
+        const payload = {
+          title,
+          titleAr: currentLang === 'ar' ? title : undefined,
+          notes: document.getElementById('modalTaskNotes').value.trim(),
+          notesAr: currentLang === 'ar' ? document.getElementById('modalTaskNotes').value.trim() : undefined,
+          startTime: document.getElementById('modalStartTime').value,
+          endTime: document.getElementById('modalEndTime').value,
+          durationMins: parseInt(document.getElementById('modalDurationMins').value, 10) || 45,
+          category: document.getElementById('modalCategory').value,
+          color: document.getElementById('modalColor').value,
+          subtasks: modalDraftSubtasks
+        };
+
+        if (id) {
+          const existing = tasks.find(x => x.id === id);
+          if (existing) Object.assign(existing, payload);
+        } else {
+          const created = {
+            id: 'task_' + Date.now(),
+            trackedSeconds: 0,
+            completed: false,
+            ...payload
+          };
+          tasks.unshift(created);
+          activeTaskId = created.id;
+          countdownTotalSec = created.durationMins * 60;
+          countdownRemainingSec = countdownTotalSec;
+        }
+
+        saveState();
+        closeTaskModal();
+        renderAll();
+      });
+    });
+  </script>
+</body>
+</html>
