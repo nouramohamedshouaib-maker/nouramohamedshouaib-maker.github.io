@@ -7,8 +7,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Munjiz — PWA Task & Time Planner</title>
-  <link id="pwaManifestLink" rel="manifest" href="data:application/manifest+json,{}" />
+  <link id="pwaManifestLink" rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="./icon.svg" />
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -90,14 +92,14 @@
     }
   </style>
 </head>
-<body class="min-h-screen bg-[#08090c] text-slate-100 selection:bg-indigo-500 selection:text-white pb-72">
+<body class="min-h-screen bg-[#08090c] text-slate-100 selection:bg-blue-500 selection:text-white pb-72">
 
   <!-- Minimal Clean Header -->
   <header class="sticky top-0 z-30 bg-[#08090c]/90 backdrop-blur-xl border-b border-[#1e2230] px-6 py-4">
     <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
       <!-- Brand + PWA & Sync Status -->
       <div class="flex items-center gap-3.5">
-        <div class="w-9 h-9 rounded-xl bg-indigo-600/90 flex items-center justify-center shadow-md shadow-indigo-600/20">
+        <div class="w-9 h-9 rounded-xl bg-blue-600/90 flex items-center justify-center shadow-md shadow-blue-600/20">
           <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
           </svg>
@@ -113,7 +115,7 @@
 
       <!-- View Switcher Tabs -->
       <nav class="flex items-center bg-[#101218] p-1 rounded-xl border border-[#222634]">
-        <button id="tabBtnSplit" type="button" class="px-4 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all bg-indigo-600 text-white">
+        <button id="tabBtnSplit" type="button" class="px-4 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all bg-blue-600 text-white">
           Split View
         </button>
         <button id="tabBtnTasks" type="button" class="px-4 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-slate-400 hover:text-white">
@@ -128,7 +130,7 @@
       <div class="flex items-center flex-wrap gap-2">
         <!-- Bilingual Switcher (EN / AR) -->
         <div class="flex items-center bg-[#101218] p-1 rounded-xl border border-[#222634]">
-          <button id="btnLangEn" type="button" class="px-2.5 py-1 rounded-lg text-xs font-semibold transition bg-indigo-600 text-white">
+          <button id="btnLangEn" type="button" class="px-2.5 py-1 rounded-lg text-xs font-semibold transition bg-blue-600 text-white">
             EN
           </button>
           <button id="btnLangAr" type="button" class="px-2.5 py-1 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-white">
@@ -162,7 +164,7 @@
           <span id="soundIcon">🔊</span>
         </button>
 
-        <button id="btnOpenNewTask" type="button" class="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-semibold transition flex items-center gap-1.5">
+        <button id="btnOpenNewTask" type="button" class="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-semibold transition flex items-center gap-1.5">
           <span>+</span>
           <span id="lblNewTaskBtn">New Task</span>
         </button>
@@ -182,7 +184,7 @@
           <p id="statTasksCount" class="text-xl font-bold text-white">0 / 0</p>
           <p id="statSubtasksCount" class="text-xs text-slate-400">0 subtasks</p>
         </div>
-        <div id="statPercentBadge" class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center text-indigo-400 font-bold text-sm">
+        <div id="statPercentBadge" class="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-center text-blue-400 font-bold text-sm">
           0%
         </div>
       </div>
@@ -226,7 +228,7 @@
           <button id="btnToggleWidgetVisibility" type="button" class="flex-1 px-3 py-1.5 rounded-lg bg-[#161922] hover:bg-[#1e2230] text-slate-200 border border-[#262b3d] text-xs font-medium transition">
             Reset Position
           </button>
-          <button id="btnPopoutPip" type="button" class="flex-1 px-3 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/30 text-xs font-medium transition">
+          <button id="btnPopoutPip" type="button" class="flex-1 px-3 py-1.5 rounded-lg bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 text-xs font-medium transition">
             Pop-out ⧉
           </button>
         </div>
@@ -243,7 +245,7 @@
           <h2 id="lblTasksHeading" class="text-base font-bold text-white tracking-wide">Tasks</h2>
 
           <div class="flex flex-wrap items-center gap-2" id="categoryFilterBar">
-            <button type="button" data-cat="all" class="cat-pill px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-600 text-white">All</button>
+            <button type="button" data-cat="all" class="cat-pill px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white">All</button>
             <button type="button" data-cat="Work" class="cat-pill px-3 py-1.5 rounded-lg text-xs font-medium bg-[#161922] text-slate-300 hover:bg-[#1e2230]">Work</button>
             <button type="button" data-cat="Study" class="cat-pill px-3 py-1.5 rounded-lg text-xs font-medium bg-[#161922] text-slate-300 hover:bg-[#1e2230]">Study</button>
             <button type="button" data-cat="Personal" class="cat-pill px-3 py-1.5 rounded-lg text-xs font-medium bg-[#161922] text-slate-300 hover:bg-[#1e2230]">Personal</button>
@@ -253,8 +255,8 @@
         <!-- Streamlined Quick Add Bar -->
         <form id="quickTaskForm" class="bg-[#0b0d12] border border-[#1e2230] rounded-2xl p-4 space-y-3.5">
           <div class="flex flex-wrap sm:flex-nowrap items-center gap-3">
-            <input id="quickTitleInput" type="text" required placeholder="Add a new task..." class="w-full bg-[#13161f] border border-[#252a3a] rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500" />
-            <button id="btnQuickAddSubmit" type="submit" class="shrink-0 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition">
+            <input id="quickTitleInput" type="text" required placeholder="Add a new task..." class="w-full bg-[#13161f] border border-[#252a3a] rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500" />
+            <button id="btnQuickAddSubmit" type="submit" class="shrink-0 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition">
               + Add
             </button>
           </div>
@@ -285,11 +287,11 @@
         <!-- Filter & Search Row -->
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div class="flex items-center gap-2 text-xs">
-            <button type="button" data-status="all" id="filterStatusAll" class="status-pill px-3 py-1.5 rounded-lg bg-[#161922] text-indigo-300 border border-indigo-500/30 font-medium">All</button>
+            <button type="button" data-status="all" id="filterStatusAll" class="status-pill px-3 py-1.5 rounded-lg bg-[#161922] text-blue-300 border border-blue-500/30 font-medium">All</button>
             <button type="button" data-status="pending" id="filterStatusPending" class="status-pill px-3 py-1.5 rounded-lg bg-[#161922]/60 text-slate-400 hover:text-slate-200">Active</button>
             <button type="button" data-status="completed" id="filterStatusCompleted" class="status-pill px-3 py-1.5 rounded-lg bg-[#161922]/60 text-slate-400 hover:text-slate-200">Done</button>
           </div>
-          <input id="searchTaskInput" type="text" placeholder="Search tasks..." class="bg-[#0b0d12] border border-[#222634] rounded-xl px-3.5 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-52" />
+          <input id="searchTaskInput" type="text" placeholder="Search tasks..." class="bg-[#0b0d12] border border-[#222634] rounded-xl px-3.5 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 w-52" />
         </div>
 
         <!-- Spacious Tasks List -->
@@ -334,7 +336,7 @@
         <span id="lblWidgetHeader" class="text-xs font-semibold text-slate-200 tracking-wide">Focus Timer</span>
       </div>
       <div class="flex items-center gap-1.5">
-        <button id="btnWidgetPip" type="button" class="px-2.5 py-1 rounded-lg bg-[#1e2230] hover:bg-[#282d40] text-[11px] text-indigo-300 font-medium transition">
+        <button id="btnWidgetPip" type="button" class="px-2.5 py-1 rounded-lg bg-[#1e2230] hover:bg-[#282d40] text-[11px] text-blue-300 font-medium transition">
           PiP ⧉
         </button>
         <button id="btnMinimizeWidget" type="button" class="w-6 h-6 rounded-lg bg-[#1e2230] hover:bg-[#282d40] text-slate-300 flex items-center justify-center text-xs font-bold">
@@ -368,7 +370,7 @@
     <div id="widgetBodyContent" class="p-4 space-y-4">
       <!-- Mode Toggle: Countdown / Stopwatch -->
       <div class="grid grid-cols-2 bg-[#0b0d12] p-1 rounded-xl border border-[#1e2230] text-xs font-semibold">
-        <button id="modeBtnCountdown" type="button" class="py-2 rounded-lg bg-indigo-600 text-white transition flex items-center justify-center gap-1.5">
+        <button id="modeBtnCountdown" type="button" class="py-2 rounded-lg bg-blue-600 text-white transition flex items-center justify-center gap-1.5">
           <span>⏳</span>
           <span id="lblModeCountdown">Countdown</span>
         </button>
@@ -381,7 +383,7 @@
       <!-- Active Task Selector -->
       <div class="flex items-center justify-between gap-2 bg-[#0b0d12] border border-[#1e2230] px-3.5 py-2.5 rounded-xl">
         <select id="widgetTaskSelect" class="w-full bg-transparent text-xs font-semibold text-white focus:outline-none truncate"></select>
-        <span id="widgetTaskTimeSlot" class="text-[11px] font-timer px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 shrink-0">--:--</span>
+        <span id="widgetTaskTimeSlot" class="text-[11px] font-timer px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-300 border border-blue-500/20 shrink-0">--:--</span>
       </div>
 
       <!-- Timer Display -->
@@ -401,7 +403,7 @@
         </div>
 
         <div class="w-full h-1.5 bg-[#181b24] rounded-full overflow-hidden">
-          <div id="widgetProgressBar" class="h-full bg-indigo-500 transition-all duration-300" style="width: 100%;"></div>
+          <div id="widgetProgressBar" class="h-full bg-blue-500 transition-all duration-300" style="width: 100%;"></div>
         </div>
 
         <div class="flex items-center justify-center gap-2 pt-1">
@@ -411,7 +413,7 @@
           <button id="btnTimerReset" type="button" class="px-3.5 py-2.5 rounded-xl bg-[#161922] hover:bg-[#222634] text-slate-300 font-medium text-xs border border-[#262b3d] transition">
             ↺
           </button>
-          <button id="btnWidgetCompleteTask" type="button" class="px-3.5 py-2.5 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 font-semibold text-xs border border-indigo-500/30 transition">
+          <button id="btnWidgetCompleteTask" type="button" class="px-3.5 py-2.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 font-semibold text-xs border border-blue-500/30 transition">
             ✓ Done
           </button>
         </div>
@@ -421,7 +423,7 @@
       <div class="bg-[#0b0d12] border border-[#1e2230] rounded-xl p-3 space-y-2">
         <div class="flex items-center justify-between">
           <span id="lblWidgetSubtasks" class="text-[11px] font-semibold text-slate-400">Subtasks</span>
-          <span id="widgetSubtaskProgressText" class="text-[11px] text-indigo-300 font-timer">0/0</span>
+          <span id="widgetSubtaskProgressText" class="text-[11px] text-blue-300 font-timer">0/0</span>
         </div>
         <div id="widgetSubtasksList" class="space-y-1.5 max-h-28 overflow-y-auto pr-1 text-xs"></div>
       </div>
@@ -443,33 +445,33 @@
 
         <div>
           <label id="lblModalTitle" class="block text-slate-300 font-medium mb-1.5">Title</label>
-          <input id="modalTaskTitle" type="text" required placeholder="Task title..." class="w-full bg-[#0b0d12] border border-[#242938] rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500" />
+          <input id="modalTaskTitle" type="text" required placeholder="Task title..." class="w-full bg-[#0b0d12] border border-[#242938] rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" />
         </div>
 
         <div>
           <label id="lblModalNotes" class="block text-slate-300 font-medium mb-1.5">Notes</label>
-          <textarea id="modalTaskNotes" rows="2" placeholder="Optional details..." class="w-full bg-[#0b0d12] border border-[#242938] rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 readable-text"></textarea>
+          <textarea id="modalTaskNotes" rows="2" placeholder="Optional details..." class="w-full bg-[#0b0d12] border border-[#242938] rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 readable-text"></textarea>
         </div>
 
         <div class="grid grid-cols-3 gap-3">
           <div>
             <label id="lblModalStart" class="block text-slate-300 font-medium mb-1.5">Start</label>
-            <input id="modalStartTime" type="time" required class="w-full bg-[#0b0d12] border border-[#242938] rounded-xl px-3 py-2 text-white font-timer focus:outline-none focus:border-indigo-500" />
+            <input id="modalStartTime" type="time" required class="w-full bg-[#0b0d12] border border-[#242938] rounded-xl px-3 py-2 text-white font-timer focus:outline-none focus:border-blue-500" />
           </div>
           <div>
             <label id="lblModalEnd" class="block text-slate-300 font-medium mb-1.5">End</label>
-            <input id="modalEndTime" type="time" required class="w-full bg-[#0b0d12] border border-[#242938] rounded-xl px-3 py-2 text-white font-timer focus:outline-none focus:border-indigo-500" />
+            <input id="modalEndTime" type="time" required class="w-full bg-[#0b0d12] border border-[#242938] rounded-xl px-3 py-2 text-white font-timer focus:outline-none focus:border-blue-500" />
           </div>
           <div>
             <label id="lblModalDuration" class="block text-slate-300 font-medium mb-1.5">Duration (min)</label>
-            <input id="modalDurationMins" type="number" min="5" max="480" value="45" required class="w-full bg-[#0b0d12] border border-[#242938] rounded-xl px-3 py-2 text-white font-timer focus:outline-none focus:border-indigo-500" />
+            <input id="modalDurationMins" type="number" min="5" max="480" value="45" required class="w-full bg-[#0b0d12] border border-[#242938] rounded-xl px-3 py-2 text-white font-timer focus:outline-none focus:border-blue-500" />
           </div>
         </div>
 
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label id="lblModalCat" class="block text-slate-300 font-medium mb-1.5">List</label>
-            <select id="modalCategory" class="w-full bg-[#0b0d12] border border-[#242938] rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-indigo-500">
+            <select id="modalCategory" class="w-full bg-[#0b0d12] border border-[#242938] rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-blue-500">
               <option value="Work">Work</option>
               <option value="Study">Study</option>
               <option value="Personal">Personal</option>
@@ -477,8 +479,8 @@
           </div>
           <div>
             <label id="lblModalColor" class="block text-slate-300 font-medium mb-1.5">Tag Color</label>
-            <select id="modalColor" class="w-full bg-[#0b0d12] border border-[#242938] rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-indigo-500">
-              <option value="indigo">Indigo</option>
+            <select id="modalColor" class="w-full bg-[#0b0d12] border border-[#242938] rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-blue-500">
+              <option value="blue">Blue</option>
               <option value="rose">Rose (High Priority)</option>
               <option value="emerald">Emerald</option>
               <option value="amber">Amber</option>
@@ -490,8 +492,8 @@
         <div class="bg-[#0b0d12] border border-[#1e2230] rounded-xl p-4 space-y-3">
           <label id="lblModalSubtasks" class="block text-slate-300 font-medium text-xs">Subtasks</label>
           <div class="flex items-center gap-2">
-            <input id="modalNewSubtaskInput" type="text" placeholder="Add step..." class="w-full bg-[#13161f] border border-[#242938] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500" />
-            <button id="btnAddSubtaskModal" type="button" class="shrink-0 px-3.5 py-2 rounded-lg bg-[#181c26] hover:bg-[#222634] text-indigo-300 border border-[#262b3d] text-xs font-semibold">
+            <input id="modalNewSubtaskInput" type="text" placeholder="Add step..." class="w-full bg-[#13161f] border border-[#242938] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500" />
+            <button id="btnAddSubtaskModal" type="button" class="shrink-0 px-3.5 py-2 rounded-lg bg-[#181c26] hover:bg-[#222634] text-blue-300 border border-[#262b3d] text-xs font-semibold">
               + Add
             </button>
           </div>
@@ -502,7 +504,7 @@
           <button id="btnCancelModal" type="button" class="px-4 py-2 rounded-xl bg-[#161922] hover:bg-[#222634] text-slate-300 font-medium text-xs">
             Cancel
           </button>
-          <button id="btnSaveModal" type="submit" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs">
+          <button id="btnSaveModal" type="submit" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs">
             Save Task
           </button>
         </div>
@@ -535,7 +537,7 @@
         </div>
         <div class="bg-[#0b0d12] border border-[#1e2230] rounded-xl p-3.5 space-y-1">
           <span class="text-slate-400 block" id="lblTierDisk">3. PC Disk File</span>
-          <span id="diskModalStatusText" class="font-semibold text-indigo-300 block">Standby</span>
+          <span id="diskModalStatusText" class="font-semibold text-blue-300 block">Standby</span>
         </div>
       </div>
 
@@ -544,19 +546,19 @@
         <div class="flex items-center justify-between">
           <h4 id="lblDriveSectionTitle" class="text-sm font-bold text-white">Google Drive Automatic Backup & Sync</h4>
           <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-            <input id="chkAutoDriveSync" type="checkbox" checked class="w-4 h-4 rounded accent-indigo-500" />
+            <input id="chkAutoDriveSync" type="checkbox" checked class="w-4 h-4 rounded accent-blue-500" />
             <span id="lblAutoSyncToggle">Auto-Sync</span>
           </label>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
           <div>
-            <label id="lblClientId" class="block text-slate-400 mb-1">Google OAuth Client ID (Optional)</label>
-            <input id="inputGoogleClientId" type="text" placeholder="xxxx.apps.googleusercontent.com" class="w-full bg-[#13161f] border border-[#242938] rounded-xl px-3.5 py-2 text-white font-mono text-xs focus:outline-none focus:border-indigo-500" />
+            <label id="lblClientId" class="block text-slate-400 mb-1">Google OAuth Client ID</label>
+            <input id="inputGoogleClientId" type="text" value="840816100126-70sj7pkum9muemp8aikl2tdrg6giu2lu.apps.googleusercontent.com" placeholder="xxxx.apps.googleusercontent.com" class="w-full bg-[#13161f] border border-[#242938] rounded-xl px-3.5 py-2 text-white font-mono text-xs focus:outline-none focus:border-blue-500" />
           </div>
           <div>
-            <label id="lblAccessToken" class="block text-slate-400 mb-1">Or Direct OAuth Access Token</label>
-            <input id="inputGoogleAccessToken" type="password" placeholder="ya29.a0AfH6SM..." class="w-full bg-[#13161f] border border-[#242938] rounded-xl px-3.5 py-2 text-white font-mono text-xs focus:outline-none focus:border-indigo-500" />
+            <label id="lblAccessToken" class="block text-slate-400 mb-1">Or Direct OAuth Access Token (Optional)</label>
+            <input id="inputGoogleAccessToken" type="password" autocomplete="off" placeholder="Leave empty when using Client ID..." class="w-full bg-[#13161f] border border-[#242938] rounded-xl px-3.5 py-2 text-white font-mono text-xs focus:outline-none focus:border-blue-500" />
           </div>
         </div>
 
@@ -564,11 +566,14 @@
           <button id="btnConnectGoogleDrive" type="button" class="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition">
             🔗 Connect Google Drive
           </button>
-          <button id="btnSyncDriveNow" type="button" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition">
+          <button id="btnSyncDriveNow" type="button" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition">
             ☁️ Backup Now
           </button>
           <button id="btnRestoreFromDrive" type="button" class="px-4 py-2 rounded-xl bg-[#161922] hover:bg-[#222634] text-slate-200 border border-[#262b3d] text-xs font-medium transition">
             📥 Restore from Drive
+          </button>
+          <button id="btnResetSyncCache" type="button" class="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/25 text-xs font-medium transition">
+            🧹 Clear Auth Cache
           </button>
         </div>
 
@@ -602,70 +607,64 @@
 
   <script>
     // =========================================================================
-    // 1. PWA MANIFEST & OFFLINE SERVICE WORKER REGISTRATION
+    // 1. PWA MANIFEST & OFFLINE SERVICE WORKER REGISTRATION (FIXED FOR OAUTH)
     // =========================================================================
     let deferredPwaPrompt = null;
 
-    function setupPwaArchitecture() {
-      // Create inline SVG icon data URI for PWA Manifest
-      const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="42" fill="#4f46e5"/><path d="M56 98l26 26 54-56" stroke="#ffffff" stroke-width="16" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-      const iconDataUrl = 'data:image/svg+xml;base64,' + btoa(svgIcon);
-
-      const manifestObj = {
-        name: 'Munjiz — Task & Time Planner',
-        short_name: 'Munjiz',
-        description: 'Offline-first Task Planner, Time Blocking & Pinned Focus Timer with Google Drive Sync',
-        start_url: './index.html',
-        display: 'standalone',
-        background_color: '#08090c',
-        theme_color: '#08090c',
-        icons: [
-          { src: iconDataUrl, sizes: '192x192', type: 'image/svg+xml', purpose: 'any maskable' },
-          { src: iconDataUrl, sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' }
-        ]
-      };
-
+    async function purgePoisonedApiCaches() {
+      if (!('caches' in window)) return;
       try {
-        const manifestLink = document.getElementById('pwaManifestLink');
-        const blob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' });
-        manifestLink.href = URL.createObjectURL(blob);
+        const keys = await caches.keys();
+        for (const key of keys) {
+          if (key === 'munjiz-pwa-v1' || key === 'munjiz-pwa-v2' || key === 'munjiz-pwa-v3') {
+            await caches.delete(key);
+          } else {
+            const cache = await caches.open(key);
+            const reqs = await cache.keys();
+            for (const req of reqs) {
+              if (req.url.includes('googleapis.com') || req.url.includes('accounts.google.com')) {
+                await cache.delete(req);
+              }
+            }
+          }
+        }
       } catch (e) {
-        // Ignore blob restrictions in sandboxed environments
+        // Ignore cache cleanup errors
+      }
+    }
+
+    function setupPwaArchitecture() {
+      purgePoisonedApiCaches();
+
+      const isHostedOrigin = (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+
+      if (!isHostedOrigin) {
+        const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="42" fill="#2563eb"/><path d="M56 98l26 26 54-56" stroke="#ffffff" stroke-width="16" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+        const iconDataUrl = 'data:image/svg+xml;base64,' + btoa(svgIcon);
+        const manifestObj = {
+          name: 'Munjiz — Task & Time Planner',
+          short_name: 'Munjiz',
+          description: 'Offline-first Task Planner, Time Blocking & Pinned Focus Timer with Google Drive Sync',
+          start_url: './index.html',
+          display: 'standalone',
+          background_color: '#08090c',
+          theme_color: '#08090c',
+          icons: [
+            { src: iconDataUrl, sizes: '192x192', type: 'image/svg+xml', purpose: 'any maskable' },
+            { src: iconDataUrl, sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' }
+          ]
+        };
+        try {
+          const manifestLink = document.getElementById('pwaManifestLink');
+          const blob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' });
+          manifestLink.href = URL.createObjectURL(blob);
+        } catch (e) {}
       }
 
-      // Register Service Worker if supported and origin permits
-      if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-        const swCode = `
-          const CACHE_NAME = 'munjiz-pwa-v1';
-          self.addEventListener('install', (e) => {
-            self.skipWaiting();
-          });
-          self.addEventListener('activate', (e) => {
-            e.waitUntil(self.clients.claim());
-          });
-          self.addEventListener('fetch', (e) => {
-            if (e.request.method !== 'GET') return;
-            e.respondWith(
-              caches.match(e.request).then((cached) => {
-                return cached || fetch(e.request).then((resp) => {
-                  const clone = resp.clone();
-                  caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
-                  return resp;
-                }).catch(() => cached);
-              })
-            );
-          });
-        `;
-        try {
-          const swBlob = new Blob([swCode], { type: 'application/javascript' });
-          const swUrl = URL.createObjectURL(swBlob);
-          navigator.serviceWorker.register(swUrl).catch(() => {
-            // Fallback to ./sw.js if hosted from multi-file PWA package
-            navigator.serviceWorker.register('./sw.js').catch(() => {});
-          });
-        } catch (e) {
-          // Ignore service worker registration errors inside sandboxed iframes
-        }
+      if ('serviceWorker' in navigator && isHostedOrigin) {
+        navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then((reg) => {
+          reg.update().catch(() => {});
+        }).catch(() => {});
       }
 
       window.addEventListener('beforeinstallprompt', (e) => {
@@ -680,14 +679,51 @@
     const IDB_NAME = 'MunjizPersistentDB';
     const IDB_VERSION = 1;
     const IDB_STORE = 'app_state';
+    const DEFAULT_GOOGLE_CLIENT_ID = '840816100126-70sj7pkum9muemp8aikl2tdrg6giu2lu.apps.googleusercontent.com';
+    const OAUTH_STORAGE_KEY = 'munjiz_oauth_config_v3';
     let idbInstance = null;
     let localFileHandle = null;
     let googleAccessToken = '';
-    let googleClientId = '';
+    let googleTokenExpiry = 0;
+    let googleClientId = DEFAULT_GOOGLE_CLIENT_ID;
+    let googleTokenClient = null;
     let driveFileId = null;
     let autoDriveSync = true;
     let pendingOfflineSync = false;
     let driveSyncTimer = null;
+
+    function loadSavedOAuthConfig() {
+      try {
+        const raw = localStorage.getItem(OAUTH_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed.clientId) googleClientId = parsed.clientId.trim();
+          if (parsed.driveFileId) driveFileId = parsed.driveFileId;
+          if (parsed.accessToken && parsed.tokenExpiry && Date.now() < parsed.tokenExpiry) {
+            googleAccessToken = parsed.accessToken;
+            googleTokenExpiry = parsed.tokenExpiry;
+          }
+        }
+      } catch (e) {}
+      const clientInput = document.getElementById('inputGoogleClientId');
+      if (clientInput) clientInput.value = googleClientId || DEFAULT_GOOGLE_CLIENT_ID;
+      if (googleAccessToken) {
+        const statusEl = document.getElementById('driveModalStatusText');
+        if (statusEl) statusEl.textContent = 'Connected ✓';
+        setSyncLog('OAuth session active. Ready for automatic Google Drive backup.', 'emerald');
+      }
+    }
+
+    function saveOAuthConfig() {
+      try {
+        localStorage.setItem(OAUTH_STORAGE_KEY, JSON.stringify({
+          clientId: googleClientId || DEFAULT_GOOGLE_CLIENT_ID,
+          accessToken: googleAccessToken,
+          tokenExpiry: googleTokenExpiry,
+          driveFileId: driveFileId
+        }));
+      } catch (e) {}
+    }
 
     function openIndexedDB() {
       return new Promise((resolve) => {
@@ -785,20 +821,94 @@
       }
     }
 
+    async function parseGoogleApiError(resp) {
+      try {
+        const data = await resp.json();
+        const msg = data?.error?.message || data?.error_description || '';
+        const reason = data?.error?.errors?.[0]?.reason || data?.error?.status || '';
+        return { status: resp.status, message: msg, reason };
+      } catch (e) {
+        return { status: resp.status, message: resp.statusText || '', reason: '' };
+      }
+    }
+
+    function formatDriveErrorGuide(errObj) {
+      if (errObj.status === 401) {
+        return 'HTTP 401 (Expired/Invalid Token): Click "🔗 Connect Google Drive" to sign in and get a fresh token.';
+      }
+      if (errObj.status === 403) {
+        if (errObj.message.toLowerCase().includes('has not been used in project') || errObj.message.toLowerCase().includes('disabled') || errObj.reason === 'accessNotConfigured') {
+          return 'HTTP 403: Google Drive API is not enabled in your Google Cloud project (munjiz-planner). Go to Google Cloud Console > APIs & Services > Library > Enable "Google Drive API".';
+        }
+        if (errObj.reason === 'insufficientPermissions' || errObj.message.toLowerCase().includes('insufficient')) {
+          return 'HTTP 403 (Insufficient Scope): Click "🔗 Connect Google Drive" and make sure to check the Google Drive permission box during login.';
+        }
+        return `HTTP 403 (${errObj.message || 'Access Denied'}): Verify Google Drive API is enabled in project munjiz-planner.`;
+      }
+      return `Drive API ${errObj.status}: ${errObj.message || 'Check connection'}`;
+    }
+
     async function findGoogleDriveBackupFile(token) {
       const q = encodeURIComponent(`name = '${DRIVE_BACKUP_FILENAME}' and trashed = false`);
-      const resp = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&fields=files(id,name,modifiedTime)`, {
+      const url = `https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&fields=files(id,name,modifiedTime)&_t=${Date.now()}`;
+      const resp = await fetch(url, {
+        method: 'GET',
+        cache: 'no-store',
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (!resp.ok) throw new Error(`Drive API ${resp.status}`);
+      if (!resp.ok) {
+        const errInfo = await parseGoogleApiError(resp);
+        const error = new Error(formatDriveErrorGuide(errInfo));
+        error.status = resp.status;
+        throw error;
+      }
       const data = await resp.json();
       return (data.files && data.files[0]) ? data.files[0] : null;
     }
 
+    async function uploadMultipartToDrive(token, payload, targetFileId) {
+      const metadata = {
+        name: DRIVE_BACKUP_FILENAME,
+        mimeType: 'application/json'
+      };
+
+      const boundary = '-------314159265358979323846';
+      const delimiter = `\r\n--${boundary}\r\n`;
+      const closeDelim = `\r\n--${boundary}--`;
+      const multipartBody =
+        delimiter +
+        'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+        JSON.stringify(metadata) +
+        delimiter +
+        'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+        JSON.stringify(payload, null, 2) +
+        closeDelim;
+
+      const url = targetFileId
+        ? `https://www.googleapis.com/upload/drive/v3/files/${targetFileId}?uploadType=multipart`
+        : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+      const method = targetFileId ? 'PATCH' : 'POST';
+
+      return fetch(url, {
+        method,
+        cache: 'no-store',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': `multipart/related; boundary=${boundary}`
+        },
+        body: multipartBody
+      });
+    }
+
     async function syncToGoogleDriveNow(manual = false) {
       const payload = buildSnapshotPayload();
-      const tokenInput = document.getElementById('inputGoogleAccessToken').value.trim();
-      if (tokenInput) googleAccessToken = tokenInput;
+      const tokenInputEl = document.getElementById('inputGoogleAccessToken');
+      const tokenInput = tokenInputEl ? tokenInputEl.value.trim() : '';
+
+      // Only use manual token input if no OAuth token is active or user explicitly pasted one
+      if (!googleAccessToken && tokenInput) {
+        googleAccessToken = tokenInput;
+      }
 
       if (!navigator.onLine) {
         pendingOfflineSync = true;
@@ -806,86 +916,87 @@
         return;
       }
 
-      // If user has provided an OAuth Access Token, perform real Google Drive v3 multipart upload
       if (googleAccessToken) {
         try {
+          await purgePoisonedApiCaches();
           setSyncLog('Syncing with Google Drive API v3...', 'amber');
           if (!driveFileId) {
             const existing = await findGoogleDriveBackupFile(googleAccessToken);
             if (existing) driveFileId = existing.id;
           }
 
-          const metadata = {
-            name: DRIVE_BACKUP_FILENAME,
-            mimeType: 'application/json'
-          };
+          let resp = await uploadMultipartToDrive(googleAccessToken, payload, driveFileId);
 
-          const boundary = '-------314159265358979323846';
-          const delimiter = `\r\n--${boundary}\r\n`;
-          const closeDelim = `\r\n--${boundary}--`;
-          const multipartBody =
-            delimiter +
-            'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
-            JSON.stringify(metadata) +
-            delimiter +
-            'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
-            JSON.stringify(payload, null, 2) +
-            closeDelim;
+          // If previous driveFileId belonged to another OAuth client (e.g. OAuth Playground) or was deleted, create a new file
+          if (!resp.ok && driveFileId && (resp.status === 404 || resp.status === 403 || resp.status === 401)) {
+            driveFileId = null;
+            resp = await uploadMultipartToDrive(googleAccessToken, payload, null);
+          }
 
-          const url = driveFileId
-            ? `https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=multipart`
-            : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
-          const method = driveFileId ? 'PATCH' : 'POST';
+          if (!resp.ok) {
+            const errInfo = await parseGoogleApiError(resp);
+            if (resp.status === 401) {
+              googleAccessToken = '';
+              googleTokenExpiry = 0;
+              if (tokenInputEl) tokenInputEl.value = '';
+              saveOAuthConfig();
+              document.getElementById('driveModalStatusText').textContent = 'Re-Auth Needed';
+            }
+            throw new Error(formatDriveErrorGuide(errInfo));
+          }
 
-          const resp = await fetch(url, {
-            method,
-            headers: {
-              Authorization: `Bearer ${googleAccessToken}`,
-              'Content-Type': `multipart/related; boundary=${boundary}`
-            },
-            body: multipartBody
-          });
-
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
           const result = await resp.json();
-          if (result.id) driveFileId = result.id;
+          if (result.id) {
+            driveFileId = result.id;
+            saveOAuthConfig();
+          }
           pendingOfflineSync = false;
           const timeStr = new Date().toLocaleTimeString('en-GB');
           document.getElementById('driveModalStatusText').textContent = `Synced (${timeStr})`;
           setSyncLog(`Google Drive API Sync Complete (${DRIVE_BACKUP_FILENAME}) at ${timeStr}`, 'emerald');
         } catch (err) {
-          setSyncLog(`Drive API Notice: ${err.message}. Data remains protected in IndexedDB.`, 'amber');
+          setSyncLog(`Drive Sync Issue: ${err.message}`, 'amber');
         }
         return;
       }
 
-      // Simulated / Mirror Cloud Vault in IndexedDB when no external OAuth token is entered yet
+      // Simulated / Mirror Cloud Vault in IndexedDB when not yet authenticated with OAuth
       await writeToIndexedDB({ ...payload, id: 'google_drive_cloud_mirror' });
       pendingOfflineSync = false;
       const timeStr = new Date().toLocaleTimeString('en-GB');
       document.getElementById('driveModalStatusText').textContent = `Cloud Mirror (${timeStr})`;
       if (manual) {
-        setSyncLog(`Cloud Backup Snapshot saved (${DRIVE_BACKUP_FILENAME}) at ${timeStr}. Add OAuth Token/Client ID for live Drive account.`, 'emerald');
+        setSyncLog(`Local Cloud Mirror saved at ${timeStr}. Click "🔗 Connect Google Drive" to sign in with Google.`, 'amber');
       }
     }
 
     async function restoreFromGoogleDrive() {
-      const tokenInput = document.getElementById('inputGoogleAccessToken').value.trim();
-      if (tokenInput) googleAccessToken = tokenInput;
+      const tokenInputEl = document.getElementById('inputGoogleAccessToken');
+      const tokenInput = tokenInputEl ? tokenInputEl.value.trim() : '';
+      if (!googleAccessToken && tokenInput) {
+        googleAccessToken = tokenInput;
+      }
 
       if (googleAccessToken && navigator.onLine) {
         try {
+          await purgePoisonedApiCaches();
           setSyncLog('Searching Google Drive for munjiz_planner_backup.json...', 'amber');
           const fileMeta = await findGoogleDriveBackupFile(googleAccessToken);
           if (!fileMeta) {
-            setSyncLog('No backup file found on Google Drive yet.', 'amber');
+            setSyncLog('No backup file found on Google Drive for this OAuth Client yet. Click "☁️ Backup Now" first.', 'amber');
             return;
           }
           driveFileId = fileMeta.id;
-          const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileMeta.id}?alt=media`, {
+          saveOAuthConfig();
+          const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileMeta.id}?alt=media&_t=${Date.now()}`, {
+            method: 'GET',
+            cache: 'no-store',
             headers: { Authorization: `Bearer ${googleAccessToken}` }
           });
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          if (!resp.ok) {
+            const errInfo = await parseGoogleApiError(resp);
+            throw new Error(formatDriveErrorGuide(errInfo));
+          }
           const cloudData = await resp.json();
           if (Array.isArray(cloudData.tasks)) {
             tasks = cloudData.tasks;
@@ -913,7 +1024,7 @@
               renderAll();
               setSyncLog(`Restored ${tasks.length} tasks from Cloud Mirror snapshot.`, 'emerald');
             } else {
-              setSyncLog('No cloud snapshot found to restore.', 'amber');
+              setSyncLog('No cloud snapshot found to restore. Click "🔗 Connect Google Drive" first.', 'amber');
             }
           };
         } catch (e) {
@@ -923,47 +1034,99 @@
     }
 
     function connectGoogleDriveOAuth() {
-      const clientId = document.getElementById('inputGoogleClientId').value.trim();
-      const manualToken = document.getElementById('inputGoogleAccessToken').value.trim();
+      const clientInputEl = document.getElementById('inputGoogleClientId');
+      const tokenInputEl = document.getElementById('inputGoogleAccessToken');
+      const clientId = (clientInputEl ? clientInputEl.value.trim() : '') || DEFAULT_GOOGLE_CLIENT_ID;
+      const manualToken = tokenInputEl ? tokenInputEl.value.trim() : '';
 
-      if (manualToken) {
+      // If user explicitly cleared Client ID and pasted only a manual token
+      if (!clientInputEl.value.trim() && manualToken) {
         googleAccessToken = manualToken;
+        googleTokenExpiry = Date.now() + 3500 * 1000;
+        driveFileId = null;
+        saveOAuthConfig();
         document.getElementById('driveModalStatusText').textContent = 'Connected (Token)';
         syncToGoogleDriveNow(true);
         return;
       }
 
-      if (!clientId) {
-        // Activate instant local Cloud Mirror + prompt user that Client ID is optional
-        document.getElementById('driveModalStatusText').textContent = 'Auto-Mirror Active';
-        syncToGoogleDriveNow(true);
+      // Always clear any stale manual token when authenticating via OAuth Client ID
+      if (tokenInputEl) tokenInputEl.value = '';
+      googleClientId = clientId;
+      if (clientInputEl) clientInputEl.value = googleClientId;
+      saveOAuthConfig();
+
+      if (location.protocol === 'file:') {
+        setSyncLog('Google OAuth cannot run from file:// URLs. Please open via https://nouramohamedshouaib-maker.github.io/ or localhost.', 'amber');
         return;
       }
 
-      googleClientId = clientId;
-      // Dynamically load Google Identity Services if online
-      if (window.google && window.google.accounts && window.google.accounts.oauth2) {
-        const tokenClient = window.google.accounts.oauth2.initTokenClient({
-          client_id: googleClientId,
-          scope: 'https://www.googleapis.com/auth/drive.file',
-          callback: (resp) => {
-            if (resp && resp.access_token) {
-              googleAccessToken = resp.access_token;
-              document.getElementById('driveModalStatusText').textContent = 'Connected ✓';
-              syncToGoogleDriveNow(true);
+      const startOAuthFlow = () => {
+        try {
+          googleTokenClient = window.google.accounts.oauth2.initTokenClient({
+            client_id: googleClientId,
+            scope: 'https://www.googleapis.com/auth/drive.file',
+            callback: async (resp) => {
+              if (resp && resp.error) {
+                setSyncLog(`Google OAuth Error (${resp.error}): ${resp.error_description || 'Ensure your email is in Test Users and Drive scope is approved.'}`, 'amber');
+                return;
+              }
+              if (resp && resp.access_token) {
+                googleAccessToken = resp.access_token;
+                googleTokenExpiry = Date.now() + ((resp.expires_in || 3500) * 1000);
+                driveFileId = null;
+                saveOAuthConfig();
+                await purgePoisonedApiCaches();
+                document.getElementById('driveModalStatusText').textContent = 'Connected ✓';
+                setSyncLog('OAuth Sign-In successful! Starting Google Drive sync...', 'emerald');
+                syncToGoogleDriveNow(true);
+              }
+            },
+            error_callback: (err) => {
+              const type = err && err.type ? err.type : 'popup_error';
+              setSyncLog(`OAuth Popup Notice (${type}): Allow popups for this site and verify https://nouramohamedshouaib-maker.github.io is in Authorized JavaScript origins.`, 'amber');
             }
-          }
-        });
-        tokenClient.requestAccessToken({ prompt: 'consent' });
+          });
+          googleTokenClient.requestAccessToken({ prompt: 'consent' });
+        } catch (err) {
+          setSyncLog(`OAuth Init Error: ${err.message}`, 'amber');
+        }
+      };
+
+      if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+        startOAuthFlow();
       } else {
+        setSyncLog('Loading Google Identity Services...', 'amber');
         const script = document.createElement('script');
         script.src = 'https://accounts.google.com/gsi/client';
-        script.onload = () => connectGoogleDriveOAuth();
+        script.onload = () => startOAuthFlow();
         script.onerror = () => {
-          setSyncLog('Could not load Google OAuth script. Check connection or paste an Access Token directly.', 'amber');
+          setSyncLog('Could not load Google OAuth script. Check internet connection or ad-blocker settings.', 'amber');
         };
         document.head.appendChild(script);
       }
+    }
+
+    async function resetAuthAndCaches() {
+      googleAccessToken = '';
+      googleTokenExpiry = 0;
+      driveFileId = null;
+      const tokenInputEl = document.getElementById('inputGoogleAccessToken');
+      if (tokenInputEl) tokenInputEl.value = '';
+      try {
+        localStorage.removeItem(OAUTH_STORAGE_KEY);
+      } catch (e) {}
+      await purgePoisonedApiCaches();
+      if ('serviceWorker' in navigator) {
+        try {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const r of regs) {
+            await r.update();
+          }
+        } catch (e) {}
+      }
+      document.getElementById('driveModalStatusText').textContent = 'Ready to Connect';
+      setSyncLog('Cleared cached tokens & Service Worker API cache. Click "🔗 Connect Google Drive" to sign in fresh.', 'emerald');
     }
 
     // =========================================================================
@@ -1171,7 +1334,7 @@
           notes: 'Complete final spacing review and verify responsive layout before the next session.',
           notesAr: 'مراجعة المسافات المريحة للقراءة والتأكد من جاهزية جميع العناصر.',
           category: 'Work',
-          color: 'indigo',
+          color: 'blue',
           startTime: getRelativeTimeStr(-25),
           endTime: getRelativeTimeStr(14),
           durationMins: 40,
@@ -1343,10 +1506,10 @@
       const btnEn = document.getElementById('btnLangEn');
       const btnAr = document.getElementById('btnLangAr');
       if (currentLang === 'en') {
-        btnEn.className = 'px-2.5 py-1 rounded-lg text-xs font-semibold transition bg-indigo-600 text-white';
+        btnEn.className = 'px-2.5 py-1 rounded-lg text-xs font-semibold transition bg-blue-600 text-white';
         btnAr.className = 'px-2.5 py-1 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-white';
       } else {
-        btnAr.className = 'px-2.5 py-1 rounded-lg text-xs font-semibold transition bg-indigo-600 text-white';
+        btnAr.className = 'px-2.5 py-1 rounded-lg text-xs font-semibold transition bg-blue-600 text-white';
         btnEn.className = 'px-2.5 py-1 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-white';
       }
 
@@ -1516,7 +1679,8 @@
 
     function getColorClasses(color) {
       const map = {
-        indigo: { bg: 'bg-indigo-500/10', border: 'border-indigo-500/30', text: 'text-indigo-300', bar: 'bg-indigo-500' },
+        blue: { bg: 'bg-blue-500/10', border: 'border-blue-500/30', text: 'text-blue-300', bar: 'bg-blue-500' },
+        indigo: { bg: 'bg-blue-500/10', border: 'border-blue-500/30', text: 'text-blue-300', bar: 'bg-blue-500' },
         rose: { bg: 'bg-rose-500/10', border: 'border-rose-500/30', text: 'text-rose-300', bar: 'bg-rose-500' },
         emerald: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', text: 'text-emerald-300', bar: 'bg-emerald-500' },
         amber: { bg: 'bg-amber-500/10', border: 'border-amber-500/30', text: 'text-amber-300', bar: 'bg-amber-500' },
@@ -1593,10 +1757,10 @@
         const notesText = getTaskNotes(task);
 
         return `
-          <article class="rounded-2xl border ${isFocused ? 'border-indigo-500/70 bg-[#141824]' : 'border-[#1e2230] bg-[#0b0d12]'} p-5 transition space-y-4">
+          <article class="rounded-2xl border ${isFocused ? 'border-blue-500/70 bg-[#141824]' : 'border-[#1e2230] bg-[#0b0d12]'} p-5 transition space-y-4">
             <div class="flex items-start justify-between gap-4">
               <div class="flex items-start gap-3.5 min-w-0 flex-1">
-                <input type="checkbox" data-action="toggle-task" data-id="${task.id}" ${task.completed ? 'checked' : ''} class="mt-1.5 w-5 h-5 rounded-md border-slate-600 accent-indigo-500 cursor-pointer shrink-0" />
+                <input type="checkbox" data-action="toggle-task" data-id="${task.id}" ${task.completed ? 'checked' : ''} class="mt-1.5 w-5 h-5 rounded-md border-slate-600 accent-blue-500 cursor-pointer shrink-0" />
                 <div class="min-w-0 flex-1 space-y-1.5">
                   <div class="flex flex-wrap items-center gap-2.5">
                     <h3 class="text-[15px] sm:text-base font-semibold ${task.completed ? 'line-through text-slate-500' : 'text-slate-100'} readable-text">${escapeHtml(titleText)}</h3>
@@ -1608,7 +1772,7 @@
               </div>
 
               <div class="flex items-center gap-1.5 shrink-0">
-                <button type="button" data-action="focus-task" data-id="${task.id}" class="px-3 py-1.5 rounded-xl ${isFocused ? 'bg-indigo-600 text-white' : 'bg-[#161922] hover:bg-[#222634] text-indigo-300 border border-[#242938]'} text-xs font-medium transition">
+                <button type="button" data-action="focus-task" data-id="${task.id}" class="px-3 py-1.5 rounded-xl ${isFocused ? 'bg-blue-600 text-white' : 'bg-[#161922] hover:bg-[#222634] text-blue-300 border border-[#242938]'} text-xs font-medium transition">
                   ${isFocused ? '⏱️' : `▶ ${escapeHtml(t('focusBtn'))}`}
                 </button>
                 <button type="button" data-action="edit-task" data-id="${task.id}" class="p-2 rounded-xl bg-[#161922] hover:bg-[#222634] text-slate-300 text-xs transition">
@@ -1622,7 +1786,7 @@
 
             <div class="flex flex-wrap items-center justify-between gap-3 text-xs bg-[#101218] px-4 py-2.5 rounded-xl border border-[#1a1e2b]">
               <div class="flex flex-wrap items-center gap-4 font-timer text-slate-300">
-                <span>🕒 <strong class="text-indigo-300 font-semibold">${task.startTime || '--:--'} – ${task.endTime || '--:--'}</strong></span>
+                <span>🕒 <strong class="text-blue-300 font-semibold">${task.startTime || '--:--'} – ${task.endTime || '--:--'}</strong></span>
                 <span class="text-slate-600">•</span>
                 <span>${task.durationMins || 30}m</span>
                 <span class="text-slate-600">•</span>
@@ -1648,8 +1812,8 @@
               `).join('')}
 
               <div class="flex items-center gap-2 pt-1.5">
-                <input type="text" data-subtask-input-for="${task.id}" placeholder="${escapeHtml(t('addStepPlaceholder'))}" class="w-full bg-[#101218] border border-[#1e2230] rounded-xl px-3.5 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500" />
-                <button type="button" data-action="add-inline-subtask" data-id="${task.id}" class="px-3.5 py-2 rounded-xl bg-[#161922] hover:bg-[#222634] text-indigo-300 text-xs font-medium shrink-0">
+                <input type="text" data-subtask-input-for="${task.id}" placeholder="${escapeHtml(t('addStepPlaceholder'))}" class="w-full bg-[#101218] border border-[#1e2230] rounded-xl px-3.5 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500" />
+                <button type="button" data-action="add-inline-subtask" data-id="${task.id}" class="px-3.5 py-2 rounded-xl bg-[#161922] hover:bg-[#222634] text-blue-300 text-xs font-medium shrink-0">
                   ${escapeHtml(t('addBtn'))}
                 </button>
               </div>
@@ -1718,7 +1882,7 @@
               </div>
               <div class="flex items-center justify-between pt-0.5">
                 <span class="text-[11px] px-2.5 py-0.5 rounded-full ${clr.bg} ${clr.text}">${escapeHtml(displayCat(task.category))}</span>
-                <button type="button" data-action="focus-task" data-id="${task.id}" class="text-xs font-medium text-indigo-400 hover:text-indigo-300">
+                <button type="button" data-action="focus-task" data-id="${task.id}" class="text-xs font-medium text-blue-400 hover:text-blue-300">
                   ▶ ${escapeHtml(t('focusBtn'))}
                 </button>
               </div>
@@ -1780,7 +1944,7 @@
       const modeBtnStopwatch = document.getElementById('modeBtnStopwatch');
 
       if (timerMode === 'countdown') {
-        modeBtnCountdown.className = 'py-2 rounded-lg bg-indigo-600 text-white transition flex items-center justify-center gap-1.5';
+        modeBtnCountdown.className = 'py-2 rounded-lg bg-blue-600 text-white transition flex items-center justify-center gap-1.5';
         modeBtnStopwatch.className = 'py-2 rounded-lg text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5';
         captionEl.textContent = t('remaining');
         presetBtns.classList.remove('hidden');
@@ -1927,11 +2091,11 @@
       ctx.fillStyle = '#08090c';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      ctx.strokeStyle = '#4f46e5';
+      ctx.strokeStyle = '#3b82f6';
       ctx.lineWidth = 3;
       ctx.strokeRect(1.5, 1.5, canvas.width - 3, canvas.height - 3);
 
-      ctx.fillStyle = '#a5b4fc';
+      ctx.fillStyle = '#93c5fd';
       ctx.font = '600 14px Inter, Cairo, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(timerMode === 'countdown' ? `⏳ ${t('countdown')}` : `⏱️ ${t('stopwatch')}`, canvas.width / 2, 30);
@@ -2073,7 +2237,7 @@
         endInput.value = item.endTime || getRelativeTimeStr(60);
         durInput.value = item.durationMins || 45;
         catInput.value = normalizeCatKey(item.category);
-        colorInput.value = item.color || 'indigo';
+        colorInput.value = (item.color === 'indigo' ? 'blue' : (item.color || 'blue'));
         modalDraftSubtasks = (item.subtasks || []).map(s => ({ ...s }));
       } else {
         idInput.value = '';
@@ -2083,7 +2247,7 @@
         endInput.value = getRelativeTimeStr(60);
         durInput.value = 45;
         catInput.value = 'Work';
-        colorInput.value = 'indigo';
+        colorInput.value = 'blue';
         modalDraftSubtasks = [];
       }
 
@@ -2127,6 +2291,7 @@
     window.addEventListener('DOMContentLoaded', async () => {
       setupPwaArchitecture();
       await loadState();
+      loadSavedOAuthConfig();
       initDraggableWidget();
 
       document.getElementById('quickStartInput').value = getRelativeTimeStr(15);
@@ -2176,6 +2341,11 @@
       document.getElementById('btnConnectGoogleDrive').addEventListener('click', connectGoogleDriveOAuth);
       document.getElementById('btnSyncDriveNow').addEventListener('click', () => syncToGoogleDriveNow(true));
       document.getElementById('btnRestoreFromDrive').addEventListener('click', restoreFromGoogleDrive);
+      document.getElementById('btnResetSyncCache').addEventListener('click', resetAuthAndCaches);
+      document.getElementById('inputGoogleClientId').addEventListener('change', (e) => {
+        googleClientId = e.target.value.trim() || DEFAULT_GOOGLE_CLIENT_ID;
+        saveOAuthConfig();
+      });
 
       // Link Local Disk File (File System Access API)
       document.getElementById('btnLinkLocalDiskFile').addEventListener('click', async () => {
@@ -2258,7 +2428,7 @@
       const plannerSec = document.getElementById('plannerSection');
 
       function setViewMode(mode) {
-        const activeCls = 'px-4 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all bg-indigo-600 text-white';
+        const activeCls = 'px-4 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all bg-blue-600 text-white';
         const idleCls = 'px-4 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-slate-400 hover:text-white';
         tabSplit.className = mode === 'split' ? activeCls : idleCls;
         tabTasks.className = mode === 'tasks' ? activeCls : idleCls;
@@ -2296,7 +2466,7 @@
           title,
           notes: '',
           category,
-          color: 'indigo',
+          color: 'blue',
           startTime,
           endTime,
           durationMins,
@@ -2406,7 +2576,7 @@
         currentCategoryFilter = pill.dataset.cat;
         document.querySelectorAll('.cat-pill').forEach(p => {
           p.className = p.dataset.cat === currentCategoryFilter
-            ? 'cat-pill px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-600 text-white'
+            ? 'cat-pill px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white'
             : 'cat-pill px-3 py-1.5 rounded-lg text-xs font-medium bg-[#161922] text-slate-300 hover:bg-[#1e2230]';
         });
         renderTasksList();
@@ -2418,7 +2588,7 @@
           currentStatusFilter = pill.dataset.status;
           document.querySelectorAll('.status-pill').forEach(p => {
             p.className = p.dataset.status === currentStatusFilter
-              ? 'status-pill px-3 py-1.5 rounded-lg bg-[#161922] text-indigo-300 border border-indigo-500/30 font-medium'
+              ? 'status-pill px-3 py-1.5 rounded-lg bg-[#161922] text-blue-300 border border-blue-500/30 font-medium'
               : 'status-pill px-3 py-1.5 rounded-lg bg-[#161922]/60 text-slate-400 hover:text-slate-200';
           });
           renderTasksList();
