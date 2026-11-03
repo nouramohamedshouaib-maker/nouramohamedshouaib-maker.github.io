@@ -64,6 +64,22 @@
     .readable-text {
       line-height: 1.8;
       word-spacing: 0.05em;
+      unicode-bidi: isolate;
+    }
+    .bidi-ltr-token {
+      direction: ltr;
+      unicode-bidi: isolate;
+      display: inline-block;
+    }
+    .bidi-rtl-block {
+      direction: rtl;
+      text-align: right;
+      unicode-bidi: isolate;
+    }
+    .bidi-ltr-block {
+      direction: ltr;
+      text-align: left;
+      unicode-bidi: isolate;
     }
     /* Minimal Dark Scrollbar */
     ::-webkit-scrollbar {
@@ -616,7 +632,7 @@
       try {
         const keys = await caches.keys();
         for (const key of keys) {
-          if (key === 'munjiz-pwa-v1' || key === 'munjiz-pwa-v2' || key === 'munjiz-pwa-v3') {
+          if (key === 'munjiz-pwa-v1' || key === 'munjiz-pwa-v2' || key === 'munjiz-pwa-v3' || key === 'munjiz-pwa-v4') {
             await caches.delete(key);
           } else {
             const cache = await caches.open(key);
@@ -674,55 +690,192 @@
     }
 
     // =========================================================================
-    // 2. INDEXEDDB PERSISTENT ENGINE + FILE SYSTEM ACCESS + GOOGLE DRIVE API
+    // 2. INDEXEDDB PERSISTENT ENGINE + PERMANENT GOOGLE DRIVE AUTO-SYNC
     // =========================================================================
     const IDB_NAME = 'MunjizPersistentDB';
     const IDB_VERSION = 1;
     const IDB_STORE = 'app_state';
     const DEFAULT_GOOGLE_CLIENT_ID = '840816100126-70sj7pkum9muemp8aikl2tdrg6giu2lu.apps.googleusercontent.com';
-    const OAUTH_STORAGE_KEY = 'munjiz_oauth_config_v3';
+    const OAUTH_STORAGE_KEY = 'munjiz_oauth_config_v4';
+    const LEGACY_OAUTH_KEY = 'munjiz_oauth_config_v3';
     let idbInstance = null;
     let localFileHandle = null;
     let googleAccessToken = '';
     let googleTokenExpiry = 0;
     let googleClientId = DEFAULT_GOOGLE_CLIENT_ID;
+    let googleUserEmail = '';
+    let isDriveLinked = false;
+    let lastCloudSyncTime = '';
     let googleTokenClient = null;
+    let silentRefreshInFlight = false;
+    let tokenRefreshTimer = null;
     let driveFileId = null;
     let autoDriveSync = true;
     let pendingOfflineSync = false;
     let driveSyncTimer = null;
+    let localUpdatedAt = 0;
 
-    function loadSavedOAuthConfig() {
-      try {
-        const raw = localStorage.getItem(OAUTH_STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed.clientId) googleClientId = parsed.clientId.trim();
-          if (parsed.driveFileId) driveFileId = parsed.driveFileId;
-          if (parsed.accessToken && parsed.tokenExpiry && Date.now() < parsed.tokenExpiry) {
-            googleAccessToken = parsed.accessToken;
-            googleTokenExpiry = parsed.tokenExpiry;
-          }
-        }
-      } catch (e) {}
-      const clientInput = document.getElementById('inputGoogleClientId');
-      if (clientInput) clientInput.value = googleClientId || DEFAULT_GOOGLE_CLIENT_ID;
-      if (googleAccessToken) {
-        const statusEl = document.getElementById('driveModalStatusText');
-        if (statusEl) statusEl.textContent = 'Connected ✓';
-        setSyncLog('OAuth session active. Ready for automatic Google Drive backup.', 'emerald');
+    function getOAuthSnapshot() {
+      return {
+        clientId: googleClientId || DEFAULT_GOOGLE_CLIENT_ID,
+        accessToken: googleAccessToken,
+        tokenExpiry: googleTokenExpiry,
+        driveFileId: driveFileId,
+        isDriveLinked: isDriveLinked,
+        userEmail: googleUserEmail,
+        autoDriveSync: autoDriveSync,
+        lastCloudSyncTime: lastCloudSyncTime
+      };
+    }
+
+    function applyOAuthSnapshot(parsed) {
+      if (!parsed || typeof parsed !== 'object') return;
+      if (parsed.clientId) googleClientId = parsed.clientId.trim();
+      if (parsed.driveFileId) driveFileId = parsed.driveFileId;
+      if (parsed.userEmail) googleUserEmail = parsed.userEmail;
+      if (typeof parsed.autoDriveSync === 'boolean') autoDriveSync = parsed.autoDriveSync;
+      if (parsed.lastCloudSyncTime) lastCloudSyncTime = parsed.lastCloudSyncTime;
+      if (parsed.isDriveLinked || parsed.accessToken || parsed.driveFileId) {
+        isDriveLinked = true;
+      }
+      if (parsed.accessToken && parsed.tokenExpiry && Date.now() < (parsed.tokenExpiry - 30000)) {
+        googleAccessToken = parsed.accessToken;
+        googleTokenExpiry = parsed.tokenExpiry;
       }
     }
 
-    function saveOAuthConfig() {
+    function updateDriveConnectionUI() {
+      const clientInput = document.getElementById('inputGoogleClientId');
+      if (clientInput) clientInput.value = googleClientId || DEFAULT_GOOGLE_CLIENT_ID;
+      const chkAuto = document.getElementById('chkAutoDriveSync');
+      if (chkAuto) chkAuto.checked = autoDriveSync;
+      const statusEl = document.getElementById('driveModalStatusText');
+      if (googleAccessToken && Date.now() < googleTokenExpiry) {
+        if (statusEl) {
+          statusEl.textContent = lastCloudSyncTime ? `Synced (${lastCloudSyncTime})` : 'Connected ✓';
+        }
+        setSyncLog(
+          googleUserEmail
+            ? `Connected (${googleUserEmail}) — Automatic Google Drive sync active.`
+            : 'Connected ✓ — Automatic Google Drive sync active.',
+          'emerald'
+        );
+        scheduleProactiveTokenRefresh();
+      } else if (isDriveLinked) {
+        if (statusEl) {
+          statusEl.textContent = lastCloudSyncTime ? `Linked (${lastCloudSyncTime})` : 'Connected (Auto-Renew)';
+        }
+        setSyncLog(
+          'Google Drive is linked. Session token will auto-renew automatically on sync.',
+          'emerald'
+        );
+      }
+    }
+
+    function loadSavedOAuthConfig() {
       try {
-        localStorage.setItem(OAUTH_STORAGE_KEY, JSON.stringify({
-          clientId: googleClientId || DEFAULT_GOOGLE_CLIENT_ID,
-          accessToken: googleAccessToken,
-          tokenExpiry: googleTokenExpiry,
-          driveFileId: driveFileId
-        }));
+        const raw = localStorage.getItem(OAUTH_STORAGE_KEY) || localStorage.getItem(LEGACY_OAUTH_KEY);
+        if (raw) {
+          applyOAuthSnapshot(JSON.parse(raw));
+        }
       } catch (e) {}
+      updateDriveConnectionUI();
+    }
+
+    function saveOAuthConfig() {
+      const snap = getOAuthSnapshot();
+      try {
+        localStorage.setItem(OAUTH_STORAGE_KEY, JSON.stringify(snap));
+      } catch (e) {}
+      if (idbInstance) {
+        try {
+          const tx = idbInstance.transaction(IDB_STORE, 'readwrite');
+          tx.objectStore(IDB_STORE).put({ id: 'oauth_config', ...snap });
+        } catch (e) {}
+      }
+    }
+
+    function scheduleProactiveTokenRefresh() {
+      if (tokenRefreshTimer) clearTimeout(tokenRefreshTimer);
+      if (!isDriveLinked || !googleTokenExpiry) return;
+      const msUntilRefresh = Math.max(10000, googleTokenExpiry - Date.now() - 4 * 60 * 1000);
+      tokenRefreshTimer = setTimeout(() => {
+        if (isDriveLinked && navigator.onLine) {
+          trySilentTokenRefresh(false);
+        }
+      }, msUntilRefresh);
+    }
+
+    async function fetchGoogleUserEmail(token) {
+      try {
+        const resp = await fetch('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress,displayName)', {
+          method: 'GET',
+          cache: 'no-store',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data?.user?.emailAddress) {
+            googleUserEmail = data.user.emailAddress;
+            saveOAuthConfig();
+          }
+        }
+      } catch (e) {}
+    }
+
+    function trySilentTokenRefresh(runSyncAfter = true) {
+      return new Promise((resolve) => {
+        if (!isDriveLinked || location.protocol === 'file:' || !navigator.onLine) {
+          resolve(false);
+          return;
+        }
+        if (googleAccessToken && Date.now() < (googleTokenExpiry - 60000)) {
+          resolve(true);
+          return;
+        }
+        if (silentRefreshInFlight) {
+          resolve(false);
+          return;
+        }
+        if (!(window.google && window.google.accounts && window.google.accounts.oauth2)) {
+          resolve(false);
+          return;
+        }
+        silentRefreshInFlight = true;
+        try {
+          const client = window.google.accounts.oauth2.initTokenClient({
+            client_id: googleClientId || DEFAULT_GOOGLE_CLIENT_ID,
+            scope: 'https://www.googleapis.com/auth/drive.file',
+            hint: googleUserEmail || undefined,
+             prompt: '',
+            callback: async (resp) => {
+              silentRefreshInFlight = false;
+              if (resp && resp.access_token) {
+                googleAccessToken = resp.access_token;
+                googleTokenExpiry = Date.now() + ((Number(resp.expires_in) || 3500) * 1000);
+                isDriveLinked = true;
+                saveOAuthConfig();
+                updateDriveConnectionUI();
+                if (!googleUserEmail) fetchGoogleUserEmail(googleAccessToken);
+                if (runSyncAfter) {
+                  await syncToGoogleDriveNow(false);
+                }
+                resolve(true);
+              } else {
+                resolve(false);
+              }
+            },
+            error_callback: () => {
+              silentRefreshInFlight = false;
+              resolve(false);
+            }
+          });
+          client.requestAccessToken({ prompt: '', hint: googleUserEmail || undefined });
+        } catch (e) {
+          silentRefreshInFlight = false;
+          resolve(false);
+        }
+      });
     }
 
     function openIndexedDB() {
@@ -753,7 +906,7 @@
       });
     }
 
-    function readFromIndexedDB() {
+    function readKeyFromIndexedDB(keyId) {
       return new Promise((resolve) => {
         if (!idbInstance) {
           resolve(null);
@@ -762,13 +915,17 @@
         try {
           const tx = idbInstance.transaction(IDB_STORE, 'readonly');
           const store = tx.objectStore(IDB_STORE);
-          const req = store.get('primary_workspace');
+          const req = store.get(keyId);
           req.onsuccess = () => resolve(req.result || null);
           req.onerror = () => resolve(null);
         } catch (e) {
           resolve(null);
         }
       });
+    }
+
+    function readFromIndexedDB() {
+      return readKeyFromIndexedDB('primary_workspace');
     }
 
     function writeToIndexedDB(payload) {
@@ -817,7 +974,7 @@
             : 'w-2 h-2 rounded-full bg-sky-400';
       }
       if (miniEl) {
-        miniEl.textContent = statusColor === 'emerald' ? 'Drive Synced ✓' : 'IndexedDB Saved ✓';
+        miniEl.textContent = (statusColor === 'emerald' || isDriveLinked) ? 'Drive Synced ✓' : 'IndexedDB Saved ✓';
       }
     }
 
@@ -834,7 +991,7 @@
 
     function formatDriveErrorGuide(errObj) {
       if (errObj.status === 401) {
-        return 'HTTP 401 (Expired/Invalid Token): Click "🔗 Connect Google Drive" to sign in and get a fresh token.';
+        return 'Session token expired — click "🔗 Connect Google Drive" or any action to renew automatically.';
       }
       if (errObj.status === 403) {
         if (errObj.message.toLowerCase().includes('has not been used in project') || errObj.message.toLowerCase().includes('disabled') || errObj.reason === 'accessNotConfigured') {
@@ -850,7 +1007,7 @@
 
     async function findGoogleDriveBackupFile(token) {
       const q = encodeURIComponent(`name = '${DRIVE_BACKUP_FILENAME}' and trashed = false`);
-      const url = `https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&fields=files(id,name,modifiedTime)&_t=${Date.now()}`;
+      const url = `https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&orderBy=modifiedTime desc&fields=files(id,name,modifiedTime)&_t=${Date.now()}`;
       const resp = await fetch(url, {
         method: 'GET',
         cache: 'no-store',
@@ -866,7 +1023,7 @@
       return (data.files && data.files[0]) ? data.files[0] : null;
     }
 
-    async function uploadMultipartToDrive(token, payload, targetFileId) {
+    async function uploadMultipartToDrive(token, payload, targetFileId, useKeepalive = false) {
       const metadata = {
         name: DRIVE_BACKUP_FILENAME,
         mimeType: 'application/json'
@@ -889,7 +1046,7 @@
         : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
       const method = targetFileId ? 'PATCH' : 'POST';
 
-      return fetch(url, {
+      const fetchOpts = {
         method,
         cache: 'no-store',
         headers: {
@@ -897,17 +1054,22 @@
           'Content-Type': `multipart/related; boundary=${boundary}`
         },
         body: multipartBody
-      });
+      };
+      if (useKeepalive && multipartBody.length < 60000) {
+        fetchOpts.keepalive = true;
+      }
+      return fetch(url, fetchOpts);
     }
 
-    async function syncToGoogleDriveNow(manual = false) {
+    async function syncToGoogleDriveNow(manual = false, isUnloading = false) {
       const payload = buildSnapshotPayload();
       const tokenInputEl = document.getElementById('inputGoogleAccessToken');
       const tokenInput = tokenInputEl ? tokenInputEl.value.trim() : '';
 
-      // Only use manual token input if no OAuth token is active or user explicitly pasted one
       if (!googleAccessToken && tokenInput) {
         googleAccessToken = tokenInput;
+        googleTokenExpiry = Date.now() + 3500 * 1000;
+        isDriveLinked = true;
       }
 
       if (!navigator.onLine) {
@@ -916,21 +1078,33 @@
         return;
       }
 
+      // If linked to Google Drive but the 1-hour access token expired, attempt silent renewal first
+      if (isDriveLinked && (!googleAccessToken || Date.now() >= (googleTokenExpiry - 30000)) && !isUnloading) {
+        pendingOfflineSync = true;
+        const renewed = await trySilentTokenRefresh(false);
+        if (!renewed && !googleAccessToken) {
+          await writeToIndexedDB({ ...payload, id: 'google_drive_cloud_mirror' });
+          setSyncLog('Changes saved locally & queued. Click anywhere or "🔗 Connect Google Drive" to refresh session.', 'amber');
+          return;
+        }
+      }
+
       if (googleAccessToken) {
         try {
-          await purgePoisonedApiCaches();
-          setSyncLog('Syncing with Google Drive API v3...', 'amber');
-          if (!driveFileId) {
+          if (!isUnloading) {
+            await purgePoisonedApiCaches();
+            setSyncLog('Syncing with Google Drive API v3...', 'amber');
+          }
+          if (!driveFileId && !isUnloading) {
             const existing = await findGoogleDriveBackupFile(googleAccessToken);
             if (existing) driveFileId = existing.id;
           }
 
-          let resp = await uploadMultipartToDrive(googleAccessToken, payload, driveFileId);
+          let resp = await uploadMultipartToDrive(googleAccessToken, payload, driveFileId, isUnloading);
 
-          // If previous driveFileId belonged to another OAuth client (e.g. OAuth Playground) or was deleted, create a new file
           if (!resp.ok && driveFileId && (resp.status === 404 || resp.status === 403 || resp.status === 401)) {
             driveFileId = null;
-            resp = await uploadMultipartToDrive(googleAccessToken, payload, null);
+            resp = await uploadMultipartToDrive(googleAccessToken, payload, null, isUnloading);
           }
 
           if (!resp.ok) {
@@ -938,9 +1112,14 @@
             if (resp.status === 401) {
               googleAccessToken = '';
               googleTokenExpiry = 0;
+              pendingOfflineSync = true;
               if (tokenInputEl) tokenInputEl.value = '';
               saveOAuthConfig();
-              document.getElementById('driveModalStatusText').textContent = 'Re-Auth Needed';
+              if (!isUnloading) {
+                const renewed = await trySilentTokenRefresh(true);
+                if (renewed) return;
+              }
+              document.getElementById('driveModalStatusText').textContent = 'Linked (Tap Connect)';
             }
             throw new Error(formatDriveErrorGuide(errInfo));
           }
@@ -948,26 +1127,83 @@
           const result = await resp.json();
           if (result.id) {
             driveFileId = result.id;
-            saveOAuthConfig();
           }
+          isDriveLinked = true;
           pendingOfflineSync = false;
           const timeStr = new Date().toLocaleTimeString('en-GB');
+          lastCloudSyncTime = timeStr;
+          saveOAuthConfig();
           document.getElementById('driveModalStatusText').textContent = `Synced (${timeStr})`;
           setSyncLog(`Google Drive API Sync Complete (${DRIVE_BACKUP_FILENAME}) at ${timeStr}`, 'emerald');
         } catch (err) {
-          setSyncLog(`Drive Sync Issue: ${err.message}`, 'amber');
+          pendingOfflineSync = true;
+          await writeToIndexedDB({ ...payload, id: 'google_drive_cloud_mirror' });
+          setSyncLog(`Saved locally. Drive Notice: ${err.message}`, 'amber');
         }
         return;
       }
 
       // Simulated / Mirror Cloud Vault in IndexedDB when not yet authenticated with OAuth
       await writeToIndexedDB({ ...payload, id: 'google_drive_cloud_mirror' });
-      pendingOfflineSync = false;
       const timeStr = new Date().toLocaleTimeString('en-GB');
-      document.getElementById('driveModalStatusText').textContent = `Cloud Mirror (${timeStr})`;
-      if (manual) {
-        setSyncLog(`Local Cloud Mirror saved at ${timeStr}. Click "🔗 Connect Google Drive" to sign in with Google.`, 'amber');
+      if (!isDriveLinked) {
+        document.getElementById('driveModalStatusText').textContent = `Cloud Mirror (${timeStr})`;
       }
+      if (manual) {
+        setSyncLog(`Local Cloud Mirror saved at ${timeStr}. Click "🔗 Connect Google Drive" to link your Google account.`, 'amber');
+      }
+    }
+
+    async function syncFromCloudIfNewerOnStartup() {
+      if (!navigator.onLine) return;
+      if (!googleAccessToken && isDriveLinked) {
+        await trySilentTokenRefresh(false);
+      }
+      if (!googleAccessToken) return;
+      try {
+        const fileMeta = await findGoogleDriveBackupFile(googleAccessToken);
+        if (!fileMeta) {
+          // No file on Drive yet; push current local tasks to Drive immediately
+          await syncToGoogleDriveNow(false);
+          return;
+        }
+        driveFileId = fileMeta.id;
+        saveOAuthConfig();
+        const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileMeta.id}?alt=media&_t=${Date.now()}`, {
+          method: 'GET',
+          cache: 'no-store',
+          headers: { Authorization: `Bearer ${googleAccessToken}` }
+        });
+        if (!resp.ok) return;
+        const cloudData = await resp.json();
+        if (cloudData && Array.isArray(cloudData.tasks)) {
+          const cloudTime = cloudData.updatedAt ? new Date(cloudData.updatedAt).getTime() : 0;
+          if (cloudTime > localUpdatedAt + 1000) {
+            tasks = cloudData.tasks.map(item => ({
+              ...item,
+              category: normalizeCatKey(item.category)
+            }));
+            if (cloudData.reminderLeadMinutes) reminderLeadMinutes = cloudData.reminderLeadMinutes;
+            if (cloudData.lang) currentLang = cloudData.lang;
+            localUpdatedAt = cloudTime;
+            await saveState(false);
+            applyLanguageUI();
+            const timeStr = new Date().toLocaleTimeString('en-GB');
+            lastCloudSyncTime = timeStr;
+            saveOAuthConfig();
+            document.getElementById('driveModalStatusText').textContent = `Synced (${timeStr})`;
+            setSyncLog(`Auto-restored latest backup from Google Drive (${timeStr}).`, 'emerald');
+          } else if (localUpdatedAt > cloudTime + 1000 || pendingOfflineSync) {
+            await syncToGoogleDriveNow(false);
+          } else {
+            const timeStr = new Date().toLocaleTimeString('en-GB');
+            lastCloudSyncTime = timeStr;
+            saveOAuthConfig();
+            document.getElementById('driveModalStatusText').textContent = `Synced (${timeStr})`;
+            setSyncLog(`Connected & in sync with Google Drive (${DRIVE_BACKUP_FILENAME}).`, 'emerald');
+          }
+        }
+      } catch (e) {}
     }
 
     async function restoreFromGoogleDrive() {
@@ -975,6 +1211,10 @@
       const tokenInput = tokenInputEl ? tokenInputEl.value.trim() : '';
       if (!googleAccessToken && tokenInput) {
         googleAccessToken = tokenInput;
+      }
+
+      if (!googleAccessToken && isDriveLinked && navigator.onLine) {
+        await trySilentTokenRefresh(false);
       }
 
       if (googleAccessToken && navigator.onLine) {
@@ -999,10 +1239,18 @@
           }
           const cloudData = await resp.json();
           if (Array.isArray(cloudData.tasks)) {
-            tasks = cloudData.tasks;
+            tasks = cloudData.tasks.map(item => ({
+              ...item,
+              category: normalizeCatKey(item.category)
+            }));
             reminderLeadMinutes = cloudData.reminderLeadMinutes || 15;
+            if (cloudData.lang) currentLang = cloudData.lang;
             await saveState(false);
-            renderAll();
+            applyLanguageUI();
+            const timeStr = new Date().toLocaleTimeString('en-GB');
+            lastCloudSyncTime = timeStr;
+            saveOAuthConfig();
+            document.getElementById('driveModalStatusText').textContent = `Synced (${timeStr})`;
             setSyncLog(`Restored ${tasks.length} tasks from Google Drive!`, 'emerald');
           }
           return;
@@ -1017,10 +1265,11 @@
         try {
           const tx = idbInstance.transaction(IDB_STORE, 'readonly');
           const req = tx.objectStore(IDB_STORE).get('google_drive_cloud_mirror');
-          req.onsuccess = () => {
+          req.onsuccess = async () => {
             if (req.result && Array.isArray(req.result.tasks)) {
               tasks = req.result.tasks;
               reminderLeadMinutes = req.result.reminderLeadMinutes || 15;
+              await saveState(false);
               renderAll();
               setSyncLog(`Restored ${tasks.length} tasks from Cloud Mirror snapshot.`, 'emerald');
             } else {
@@ -1043,6 +1292,7 @@
       if (!clientInputEl.value.trim() && manualToken) {
         googleAccessToken = manualToken;
         googleTokenExpiry = Date.now() + 3500 * 1000;
+        isDriveLinked = true;
         driveFileId = null;
         saveOAuthConfig();
         document.getElementById('driveModalStatusText').textContent = 'Connected (Token)';
@@ -1066,6 +1316,7 @@
           googleTokenClient = window.google.accounts.oauth2.initTokenClient({
             client_id: googleClientId,
             scope: 'https://www.googleapis.com/auth/drive.file',
+            hint: googleUserEmail || undefined,
             callback: async (resp) => {
               if (resp && resp.error) {
                 setSyncLog(`Google OAuth Error (${resp.error}): ${resp.error_description || 'Ensure your email is in Test Users and Drive scope is approved.'}`, 'amber');
@@ -1073,13 +1324,15 @@
               }
               if (resp && resp.access_token) {
                 googleAccessToken = resp.access_token;
-                googleTokenExpiry = Date.now() + ((resp.expires_in || 3500) * 1000);
-                driveFileId = null;
+                googleTokenExpiry = Date.now() + ((Number(resp.expires_in) || 3500) * 1000);
+                isDriveLinked = true;
                 saveOAuthConfig();
+                scheduleProactiveTokenRefresh();
+                fetchGoogleUserEmail(googleAccessToken);
                 await purgePoisonedApiCaches();
                 document.getElementById('driveModalStatusText').textContent = 'Connected ✓';
-                setSyncLog('OAuth Sign-In successful! Starting Google Drive sync...', 'emerald');
-                syncToGoogleDriveNow(true);
+                setSyncLog('OAuth Sign-In successful! Syncing with Google Drive...', 'emerald');
+                await syncToGoogleDriveNow(true);
               }
             },
             error_callback: (err) => {
@@ -1087,7 +1340,11 @@
               setSyncLog(`OAuth Popup Notice (${type}): Allow popups for this site and verify https://nouramohamedshouaib-maker.github.io is in Authorized JavaScript origins.`, 'amber');
             }
           });
-          googleTokenClient.requestAccessToken({ prompt: 'consent' });
+          // Only show full consent screen on first connection; if already linked, skip consent prompt!
+          googleTokenClient.requestAccessToken({
+            prompt: isDriveLinked ? '' : 'consent',
+            hint: googleUserEmail || undefined
+          });
         } catch (err) {
           setSyncLog(`OAuth Init Error: ${err.message}`, 'amber');
         }
@@ -1110,12 +1367,23 @@
     async function resetAuthAndCaches() {
       googleAccessToken = '';
       googleTokenExpiry = 0;
+      googleUserEmail = '';
+      isDriveLinked = false;
+      lastCloudSyncTime = '';
       driveFileId = null;
+      if (tokenRefreshTimer) clearTimeout(tokenRefreshTimer);
       const tokenInputEl = document.getElementById('inputGoogleAccessToken');
       if (tokenInputEl) tokenInputEl.value = '';
       try {
         localStorage.removeItem(OAUTH_STORAGE_KEY);
+        localStorage.removeItem(LEGACY_OAUTH_KEY);
       } catch (e) {}
+      if (idbInstance) {
+        try {
+          const tx = idbInstance.transaction(IDB_STORE, 'readwrite');
+          tx.objectStore(IDB_STORE).delete('oauth_config');
+        } catch (e) {}
+      }
       await purgePoisonedApiCaches();
       if ('serviceWorker' in navigator) {
         try {
@@ -1404,9 +1672,13 @@
     }
 
     function buildSnapshotPayload() {
+      const nowIso = new Date().toISOString();
+      localUpdatedAt = Date.now();
       return {
-        updatedAt: new Date().toISOString(),
+        initialized: true,
+        updatedAt: nowIso,
         tasks,
+        activeTaskId,
         reminderLeadMinutes,
         lang: currentLang
       };
@@ -1415,71 +1687,97 @@
     async function loadState() {
       await openIndexedDB();
       const idbData = await readFromIndexedDB();
+      const idbOAuth = await readKeyFromIndexedDB('oauth_config');
+      if (idbOAuth) {
+        applyOAuthSnapshot(idbOAuth);
+      }
 
-      if (idbData && Array.isArray(idbData.tasks) && idbData.tasks.length > 0) {
-        tasks = idbData.tasks.map(item => ({
+      let lsData = null;
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) lsData = JSON.parse(raw);
+      } catch (e) {}
+
+      const idbValid = idbData && Array.isArray(idbData.tasks) && (idbData.initialized || idbData.tasks.length > 0);
+      const lsValid = lsData && Array.isArray(lsData.tasks) && (lsData.initialized || lsData.tasks.length > 0);
+
+      let chosen = null;
+      if (idbValid && lsValid) {
+        const tIdb = idbData.updatedAt ? new Date(idbData.updatedAt).getTime() : 0;
+        const tLs = lsData.updatedAt ? new Date(lsData.updatedAt).getTime() : 0;
+        chosen = tLs >= tIdb ? lsData : idbData;
+      } else if (lsValid) {
+        chosen = lsData;
+      } else if (idbValid) {
+        chosen = idbData;
+      }
+
+      if (chosen) {
+        tasks = chosen.tasks.map(item => ({
           ...item,
           category: normalizeCatKey(item.category)
         }));
-        reminderLeadMinutes = idbData.reminderLeadMinutes || 15;
-        currentLang = idbData.lang || 'en';
-      } else {
+        reminderLeadMinutes = chosen.reminderLeadMinutes || 15;
+        currentLang = chosen.lang || 'en';
+        if (chosen.activeTaskId) activeTaskId = chosen.activeTaskId;
+        localUpdatedAt = chosen.updatedAt ? new Date(chosen.updatedAt).getTime() : Date.now();
+        // Ensure both stores have the newest chosen state
+        const syncPayload = {
+          initialized: true,
+          updatedAt: chosen.updatedAt || new Date().toISOString(),
+          tasks,
+          activeTaskId,
+          reminderLeadMinutes,
+          lang: currentLang
+        };
         try {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            if (Array.isArray(parsed.tasks) && parsed.tasks.length > 0) {
-              tasks = parsed.tasks.map(item => ({
-                ...item,
-                category: normalizeCatKey(item.category)
-              }));
-              reminderLeadMinutes = parsed.reminderLeadMinutes || 15;
-              currentLang = parsed.lang || 'en';
-            } else {
-              tasks = createDefaultTasks();
-            }
-          } else {
-            tasks = createDefaultTasks();
-          }
-        } catch (e) {
-          tasks = createDefaultTasks();
-        }
-        await writeToIndexedDB(buildSnapshotPayload());
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(syncPayload));
+        } catch (e) {}
+        await writeToIndexedDB(syncPayload);
+      } else {
+        tasks = createDefaultTasks();
+        const initPayload = buildSnapshotPayload();
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(initPayload));
+        } catch (e) {}
+        await writeToIndexedDB(initPayload);
       }
 
-      if (!activeTaskId && tasks.length > 0) {
-        const firstIncomplete = tasks.find(item => !item.completed) || tasks[0];
-        activeTaskId = firstIncomplete.id;
-        countdownTotalSec = (firstIncomplete.durationMins || 25) * 60;
+      if (tasks.length > 0) {
+        const activeObj = tasks.find(item => item.id === activeTaskId) || tasks.find(item => !item.completed) || tasks[0];
+        activeTaskId = activeObj.id;
+        countdownTotalSec = (activeObj.durationMins || 25) * 60;
         countdownRemainingSec = countdownTotalSec;
-        stopwatchElapsedSec = firstIncomplete.trackedSeconds || 0;
+        stopwatchElapsedSec = activeObj.trackedSeconds || 0;
+      } else {
+        activeTaskId = null;
       }
     }
 
     async function saveState(triggerCloud = true) {
       const payload = buildSnapshotPayload();
 
-      // 1. Write to IndexedDB (primary durable storage)
+      // 1. Synchronous immediate write to localStorage FIRST (0ms delay — survives instant tab close!)
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      } catch (e) {}
+
+      // 2. Write to IndexedDB (primary durable storage)
       await writeToIndexedDB(payload);
 
-      // 2. Write to local disk file if linked via File System Access API
+      // 3. Write to local disk file if linked via File System Access API
       if (localFileHandle) {
         writeToLocalDiskFile(payload);
       }
 
-      // 3. Fallback mirror in localStorage
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-      } catch (e) {
-        // Ignore storage errors
-      }
-
-      // 4. Debounced Auto-Sync to Google Drive API
+      // 4. Fast Auto-Sync to Google Drive API (350ms debounce)
       if (triggerCloud && autoDriveSync) {
+        pendingOfflineSync = true;
         if (driveSyncTimer) clearTimeout(driveSyncTimer);
         driveSyncTimer = setTimeout(() => {
+          driveSyncTimer = null;
           syncToGoogleDriveNow(false);
-        }, 1800);
+        }, 350);
       }
     }
 
@@ -1613,6 +1911,7 @@
       }
 
       renderAll();
+      refreshAllInputDirections();
     }
 
     // =========================================================================
@@ -1697,6 +1996,64 @@
         .replace(/"/g, '&quot;');
     }
 
+    const ARABIC_CHAR_REGEX = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+    const LATIN_CHAR_REGEX = /[A-Za-z]/;
+    const INLINE_LATIN_RUN_REGEX = /([A-Za-z0-9]+(?:[\s._:\-/+#&@]+[A-Za-z0-9]+)*)/g;
+
+    function hasArabicText(str) {
+      return ARABIC_CHAR_REGEX.test(String(str || ''));
+    }
+
+    function getSmartTextDir(str) {
+      const s = String(str || '');
+      if (hasArabicText(s)) return 'rtl';
+      if (LATIN_CHAR_REGEX.test(s)) return 'ltr';
+      return currentLang === 'ar' ? 'rtl' : 'ltr';
+    }
+
+    function getSmartAlignClass(str) {
+      return getSmartTextDir(str) === 'rtl' ? 'bidi-rtl-block text-right' : 'bidi-ltr-block text-left';
+    }
+
+    function renderBidiText(str) {
+      const raw = String(str || '');
+      if (!raw) return '';
+      if (!hasArabicText(raw)) {
+        return escapeHtml(raw);
+      }
+      // For Arabic text containing English words/numbers, isolate each Latin/number phrase inside <bdi dir="ltr">
+      const parts = raw.split(INLINE_LATIN_RUN_REGEX);
+      return parts.map((part, idx) => {
+        if (idx % 2 === 1 && LATIN_CHAR_REGEX.test(part)) {
+          return `<bdi dir="ltr" class="bidi-ltr-token">${escapeHtml(part)}</bdi>`;
+        }
+        return escapeHtml(part);
+      }).join('');
+    }
+
+    function applySmartInputDirection(el) {
+      if (!el) return;
+      const val = (el.value || '').trim();
+      let dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+      if (val.length > 0) {
+        dir = getSmartTextDir(val);
+      }
+      el.setAttribute('dir', dir);
+      el.style.textAlign = dir === 'rtl' ? 'right' : 'left';
+    }
+
+    function refreshAllInputDirections() {
+      const inputs = document.querySelectorAll('input[type="text"], textarea');
+      inputs.forEach(el => {
+        if (el.id === 'inputGoogleClientId') {
+          el.setAttribute('dir', 'ltr');
+          el.style.textAlign = 'left';
+          return;
+        }
+        applySmartInputDirection(el);
+      });
+    }
+
     // =========================================================================
     // RENDER FUNCTIONS
     // =========================================================================
@@ -1755,19 +2112,21 @@
         const isFocused = task.id === activeTaskId;
         const titleText = getTaskTitle(task);
         const notesText = getTaskNotes(task);
+        const titleDir = getSmartTextDir(titleText);
+        const notesDir = getSmartTextDir(notesText);
 
         return `
           <article class="rounded-2xl border ${isFocused ? 'border-blue-500/70 bg-[#141824]' : 'border-[#1e2230] bg-[#0b0d12]'} p-5 transition space-y-4">
             <div class="flex items-start justify-between gap-4">
               <div class="flex items-start gap-3.5 min-w-0 flex-1">
                 <input type="checkbox" data-action="toggle-task" data-id="${task.id}" ${task.completed ? 'checked' : ''} class="mt-1.5 w-5 h-5 rounded-md border-slate-600 accent-blue-500 cursor-pointer shrink-0" />
-                <div class="min-w-0 flex-1 space-y-1.5">
-                  <div class="flex flex-wrap items-center gap-2.5">
-                    <h3 class="text-[15px] sm:text-base font-semibold ${task.completed ? 'line-through text-slate-500' : 'text-slate-100'} readable-text">${escapeHtml(titleText)}</h3>
+                <div class="min-w-0 flex-1 space-y-2">
+                  <div class="flex flex-wrap items-center gap-2">
                     <span class="text-[11px] px-2.5 py-0.5 rounded-full ${clr.bg} ${clr.text} border ${clr.border} font-medium">${escapeHtml(displayCat(task.category))}</span>
                     ${isFocused ? `<span class="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-medium">${escapeHtml(t('activeBadge'))}</span>` : ''}
                   </div>
-                  ${notesText ? `<p class="text-xs sm:text-[13px] text-slate-400 readable-text">${escapeHtml(notesText)}</p>` : ''}
+                  <h3 dir="${titleDir}" class="text-[15px] sm:text-base font-semibold ${task.completed ? 'line-through text-slate-500' : 'text-slate-100'} readable-text ${getSmartAlignClass(titleText)} w-full">${renderBidiText(titleText)}</h3>
+                  ${notesText ? `<p dir="${notesDir}" class="text-xs sm:text-[13px] text-slate-400 readable-text ${getSmartAlignClass(notesText)} w-full">${renderBidiText(notesText)}</p>` : ''}
                 </div>
               </div>
 
@@ -1786,14 +2145,14 @@
 
             <div class="flex flex-wrap items-center justify-between gap-3 text-xs bg-[#101218] px-4 py-2.5 rounded-xl border border-[#1a1e2b]">
               <div class="flex flex-wrap items-center gap-4 font-timer text-slate-300">
-                <span>🕒 <strong class="text-blue-300 font-semibold">${task.startTime || '--:--'} – ${task.endTime || '--:--'}</strong></span>
+                <span>🕒 <strong dir="ltr" class="inline-block text-blue-300 font-semibold">${task.startTime || '--:--'} – ${task.endTime || '--:--'}</strong></span>
                 <span class="text-slate-600">•</span>
-                <span>${task.durationMins || 30}m</span>
+                <span dir="ltr" class="inline-block">${task.durationMins || 30}m</span>
                 <span class="text-slate-600">•</span>
-                <span class="text-emerald-400">${formatSecondsMMSS(task.trackedSeconds || 0)}</span>
+                <span dir="ltr" class="inline-block text-emerald-400">${formatSecondsMMSS(task.trackedSeconds || 0)}</span>
               </div>
               <div class="flex items-center gap-2.5">
-                <span class="text-[11px] text-slate-400 font-timer">${subDone}/${subTotal}</span>
+                <span dir="ltr" class="text-[11px] text-slate-400 font-timer">${subDone}/${subTotal}</span>
                 <div class="w-20 h-1.5 bg-[#1b1f2c] rounded-full overflow-hidden">
                   <div class="h-full ${clr.bar}" style="width: ${subPct}%"></div>
                 </div>
@@ -1801,15 +2160,19 @@
             </div>
 
             <div class="space-y-2 pt-1">
-              ${(task.subtasks || []).map(st => `
-                <label class="flex items-center justify-between gap-3 py-1.5 px-3 rounded-xl hover:bg-[#12151f] cursor-pointer group transition">
-                  <div class="flex items-center gap-3 min-w-0">
+              ${(task.subtasks || []).map(st => {
+                const stText = getSubtaskText(st);
+                const stDir = getSmartTextDir(stText);
+                return `
+                <div class="flex items-center justify-between gap-3 py-1.5 px-3 rounded-xl hover:bg-[#12151f] group transition">
+                  <label class="flex items-center gap-3 min-w-0 flex-1 cursor-pointer">
                     <input type="checkbox" data-action="toggle-subtask" data-task-id="${task.id}" data-sub-id="${st.id}" ${st.done ? 'checked' : ''} class="w-4 h-4 rounded border-slate-600 accent-emerald-500 cursor-pointer shrink-0" />
-                    <span class="text-[13px] readable-text ${st.done ? 'line-through text-slate-500' : 'text-slate-200'}">${escapeHtml(getSubtaskText(st))}</span>
-                  </div>
-                  <button type="button" data-action="delete-subtask" data-task-id="${task.id}" data-sub-id="${st.id}" class="opacity-0 group-hover:opacity-100 text-xs text-slate-500 hover:text-rose-400 px-1.5 transition">✕</button>
-                </label>
-              `).join('')}
+                    <span dir="${stDir}" class="text-[13px] readable-text ${getSmartAlignClass(stText)} flex-1 ${st.done ? 'line-through text-slate-500' : 'text-slate-200'}">${renderBidiText(stText)}</span>
+                  </label>
+                  <button type="button" data-action="delete-subtask" data-task-id="${task.id}" data-sub-id="${st.id}" class="opacity-0 group-hover:opacity-100 text-xs text-slate-500 hover:text-rose-400 px-1.5 transition shrink-0">✕</button>
+                </div>
+              `;
+              }).join('')}
 
               <div class="flex items-center gap-2 pt-1.5">
                 <input type="text" data-subtask-input-for="${task.id}" placeholder="${escapeHtml(t('addStepPlaceholder'))}" class="w-full bg-[#101218] border border-[#1e2230] rounded-xl px-3.5 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500" />
@@ -1848,11 +2211,14 @@
       if (nextTask) {
         const sm = timeStrToMinutes(nextTask.startTime);
         const diff = forcedPreviewUpcomingTask ? reminderLeadMinutes : Math.max(0, sm - nowMins);
-        nextTitleEl.textContent = getTaskTitle(nextTask);
+        const ntTitle = getTaskTitle(nextTask);
+        nextTitleEl.setAttribute('dir', getSmartTextDir(ntTitle));
+        nextTitleEl.innerHTML = renderBidiText(ntTitle);
         nextTimeEl.textContent = t('startsAtInfo')(nextTask.startTime, diff, nextTask.durationMins);
         btnStartNext.dataset.id = nextTask.id;
         btnStartNext.disabled = false;
       } else {
+        nextTitleEl.setAttribute('dir', currentLang === 'ar' ? 'rtl' : 'ltr');
         nextTitleEl.textContent = t('noUpcoming');
         nextTimeEl.textContent = t('noUpcomingSub');
         btnStartNext.dataset.id = '';
@@ -1865,18 +2231,20 @@
         const isCurrentNow = sm !== null && em !== null && nowMins >= sm && nowMins <= em && !task.completed;
         const minsUntil = sm !== null ? (sm - nowMins) : null;
         const isStartingSoon = !task.completed && minsUntil !== null && minsUntil > 0 && minsUntil <= reminderLeadMinutes;
+        const tTitle = getTaskTitle(task);
+        const tDir = getSmartTextDir(tTitle);
 
         return `
           <div class="flex items-stretch gap-4 p-4 rounded-2xl border ${isCurrentNow ? 'border-emerald-500/60 bg-emerald-950/15' : isStartingSoon ? 'border-amber-500/70 bg-amber-950/15' : 'border-[#1e2230] bg-[#0b0d12]'} transition">
-            <div class="w-16 shrink-0 flex flex-col justify-between font-timer text-xs text-slate-400">
+            <div dir="ltr" class="w-16 shrink-0 flex flex-col justify-between font-timer text-xs text-slate-400 text-left">
               <span class="font-semibold text-slate-200">${task.startTime || '--:--'}</span>
               <span class="text-[11px] text-slate-500">${task.durationMins || 30}m</span>
               <span class="text-[11px]">${task.endTime || '--:--'}</span>
             </div>
 
             <div class="flex-1 min-w-0 space-y-2 border-s border-[#1e2230] ps-4">
-              <div class="flex items-center justify-between gap-2">
-                <span class="text-sm font-semibold ${task.completed ? 'line-through text-slate-500' : 'text-slate-100'} truncate readable-text">${escapeHtml(getTaskTitle(task))}</span>
+              <div class="flex items-start justify-between gap-2">
+                <span dir="${tDir}" class="text-sm font-semibold ${task.completed ? 'line-through text-slate-500' : 'text-slate-100'} readable-text ${getSmartAlignClass(tTitle)} flex-1">${renderBidiText(tTitle)}</span>
                 ${isCurrentNow ? `<span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold shrink-0">${escapeHtml(t('inProgressNow'))}</span>` : ''}
                 ${isStartingSoon ? `<span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-semibold shrink-0">${escapeHtml(t('startsIn')(minsUntil))}</span>` : ''}
               </div>
@@ -1918,12 +2286,16 @@
         if (subs.length === 0) {
           subListEl.innerHTML = `<p class="text-[11px] text-slate-500 py-1">${escapeHtml(t('noSubtasks'))}</p>`;
         } else {
-          subListEl.innerHTML = subs.map(st => `
+          subListEl.innerHTML = subs.map(st => {
+            const stText = getSubtaskText(st);
+            const stDir = getSmartTextDir(stText);
+            return `
             <label class="flex items-center gap-2.5 py-1 px-2 rounded-lg hover:bg-[#151822] cursor-pointer">
               <input type="checkbox" data-action="toggle-subtask" data-task-id="${activeTask.id}" data-sub-id="${st.id}" ${st.done ? 'checked' : ''} class="w-3.5 h-3.5 rounded accent-emerald-500 cursor-pointer shrink-0" />
-              <span class="truncate readable-text ${st.done ? 'line-through text-slate-500' : 'text-slate-200'}">${escapeHtml(getSubtaskText(st))}</span>
+              <span dir="${stDir}" class="readable-text ${getSmartAlignClass(stText)} flex-1 ${st.done ? 'line-through text-slate-500' : 'text-slate-200'}">${renderBidiText(stText)}</span>
             </label>
-          `).join('');
+          `;
+          }).join('');
         }
       } else {
         slotEl.textContent = '--:--';
@@ -2019,6 +2391,7 @@
         clearInterval(timerIntervalId);
         timerIntervalId = null;
         timerRunning = false;
+        saveState(true);
         updateTimerDisplayUI();
         return;
       }
@@ -2254,6 +2627,7 @@
       renderModalSubtasks();
       overlay.classList.remove('hidden');
       overlay.classList.add('flex');
+      refreshAllInputDirections();
       titleInput.focus();
     }
 
@@ -2269,12 +2643,16 @@
         container.innerHTML = `<p class="text-[11px] text-slate-500">${escapeHtml(t('noSubtasks'))}</p>`;
         return;
       }
-      container.innerHTML = modalDraftSubtasks.map((st, idx) => `
-        <div class="flex items-center justify-between bg-[#13161f] px-3 py-2 rounded-lg border border-[#222634] text-xs">
-          <span class="text-slate-200">${escapeHtml(getSubtaskText(st))}</span>
-          <button type="button" data-modal-del-sub="${idx}" class="text-rose-400 hover:text-rose-300 font-bold px-1">✕</button>
+      container.innerHTML = modalDraftSubtasks.map((st, idx) => {
+        const stText = getSubtaskText(st);
+        const stDir = getSmartTextDir(stText);
+        return `
+        <div class="flex items-center justify-between gap-2 bg-[#13161f] px-3 py-2 rounded-lg border border-[#222634] text-xs">
+          <span dir="${stDir}" class="text-slate-200 readable-text ${getSmartAlignClass(stText)} flex-1">${renderBidiText(stText)}</span>
+          <button type="button" data-modal-del-sub="${idx}" class="text-rose-400 hover:text-rose-300 font-bold px-1 shrink-0">✕</button>
         </div>
-      `).join('');
+      `;
+      }).join('');
     }
 
     function renderAll() {
@@ -2299,6 +2677,55 @@
       document.getElementById('reminderLeadSelect').value = String(reminderLeadMinutes);
 
       applyLanguageUI();
+      refreshAllInputDirections();
+
+      // Automatically sync with Google Drive on startup if linked
+      setTimeout(() => {
+        if (isDriveLinked && navigator.onLine) {
+          syncFromCloudIfNewerOnStartup();
+        }
+      }, 600);
+
+      // Live smart BiDi direction & alignment for any text input or textarea
+      document.addEventListener('input', (e) => {
+        if (e.target && (e.target.matches('input[type="text"]') || e.target.matches('textarea'))) {
+          if (e.target.id !== 'inputGoogleClientId') {
+            applySmartInputDirection(e.target);
+          }
+        }
+      });
+
+      // Flush any pending save & Drive sync immediately when tab is hidden or closing
+      const flushBeforeExit = () => {
+        const payload = buildSnapshotPayload();
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        } catch (e) {}
+        writeToIndexedDB(payload);
+        if (driveSyncTimer) {
+          clearTimeout(driveSyncTimer);
+          driveSyncTimer = null;
+          if (autoDriveSync && navigator.onLine) {
+            syncToGoogleDriveNow(false, true);
+          }
+        }
+      };
+      window.addEventListener('pagehide', flushBeforeExit);
+      window.addEventListener('beforeunload', flushBeforeExit);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+          flushBeforeExit();
+        } else if (document.visibilityState === 'visible' && isDriveLinked && navigator.onLine) {
+          syncFromCloudIfNewerOnStartup();
+        }
+      });
+
+      // On first user click, if Drive is linked but token expired while closed, renew silently
+      document.addEventListener('pointerdown', () => {
+        if (isDriveLinked && (!googleAccessToken || Date.now() >= (googleTokenExpiry - 60000)) && navigator.onLine) {
+          trySilentTokenRefresh(pendingOfflineSync);
+        }
+      }, { passive: true });
 
       // Network Online / Offline Auto-Sync Listener
       window.addEventListener('online', () => {
@@ -2464,7 +2891,9 @@
         const newTask = {
           id: 'task_' + Date.now(),
           title,
+          titleAr: title,
           notes: '',
+          notesAr: '',
           category,
           color: 'blue',
           startTime,
@@ -2678,11 +3107,13 @@
           playAlertSound('done');
           const next = tasks.find(x => !x.completed);
           if (next) {
-            selectActiveTask(next.id, false);
-          } else {
-            saveState();
-            renderAll();
+            activeTaskId = next.id;
+            countdownTotalSec = (next.durationMins || 25) * 60;
+            countdownRemainingSec = countdownTotalSec;
+            stopwatchElapsedSec = next.trackedSeconds || 0;
           }
+          saveState(true);
+          renderAll();
         }
       });
 
@@ -2728,17 +3159,35 @@
         const title = document.getElementById('modalTaskTitle').value.trim();
         if (!title) return;
 
+        // If user typed a subtask in the input box without clicking "+ Add", include it automatically
+        const pendingSubInput = document.getElementById('modalNewSubtaskInput');
+        if (pendingSubInput && pendingSubInput.value.trim()) {
+          const subTxt = pendingSubInput.value.trim();
+          modalDraftSubtasks.push({
+            id: 'st_' + Date.now() + Math.random().toString(36).slice(2, 5),
+            text: subTxt,
+            textAr: subTxt,
+            done: false
+          });
+          pendingSubInput.value = '';
+        }
+
+        const notesVal = document.getElementById('modalTaskNotes').value.trim();
         const payload = {
           title,
-          titleAr: currentLang === 'ar' ? title : undefined,
-          notes: document.getElementById('modalTaskNotes').value.trim(),
-          notesAr: currentLang === 'ar' ? document.getElementById('modalTaskNotes').value.trim() : undefined,
+          titleAr: title,
+          notes: notesVal,
+          notesAr: notesVal,
           startTime: document.getElementById('modalStartTime').value,
           endTime: document.getElementById('modalEndTime').value,
           durationMins: parseInt(document.getElementById('modalDurationMins').value, 10) || 45,
           category: document.getElementById('modalCategory').value,
           color: document.getElementById('modalColor').value,
-          subtasks: modalDraftSubtasks
+          subtasks: modalDraftSubtasks.map(s => ({
+            ...s,
+            text: getSubtaskText(s),
+            textAr: getSubtaskText(s)
+          }))
         };
 
         if (id) {
